@@ -3,7 +3,7 @@
 // Face Engine
 // ============================================
 
-const MODEL_PATH = "./models";
+const MODEL_PATH = "models";
 
 let modelsLoaded = false;
 let currentStream = null;
