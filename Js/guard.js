@@ -380,21 +380,53 @@ async function startCamera(){
         await navigator.mediaDevices.getUserMedia({
 
             video:{
-                facingMode:"user"
+                facingMode:"user",
+                width:{
+                    ideal:640
+                },
+                height:{
+                    ideal:480
+                }
             }
 
         });
 
     faceVideo.srcObject = currentStream;
 
+
     await new Promise(resolve=>{
 
-        faceVideo.onloadedmetadata = resolve;
+        faceVideo.onloadedmetadata = async()=>{
+
+            await faceVideo.play();
+
+            resolve();
+
+        };
 
     });
 
-}
 
+    // Wait until camera actually produces frames
+    while(
+        faceVideo.videoWidth === 0 ||
+        faceVideo.videoHeight === 0
+    ){
+
+        await new Promise(resolve =>
+            setTimeout(resolve,100)
+        );
+
+    }
+
+
+    console.log(
+        "Camera ready:",
+        faceVideo.videoWidth,
+        faceVideo.videoHeight
+    );
+
+}
 
 
 cancelFaceBtn.addEventListener("click",()=>{
@@ -417,7 +449,17 @@ async function verifyGuardFace(){
 
     await startCamera();
 
-    faceStatus.textContent="Looking for face...";
+ faceStatus.textContent="Camera ready. Looking for face...";
+
+ await new Promise(resolve =>
+    setTimeout(resolve,2000)
+ );
+
+ console.log(
+    "Video:",
+    faceVideo.videoWidth,
+    faceVideo.videoHeight
+ );
 
     const detection =
         await faceapi
@@ -483,26 +525,26 @@ async function verifyGuardFace(){
 
     return null;
 
-}
+ }
 
-// Load today's shift
-const shift = await getAssignedShift(
+ // Load today's shift
+ const shift = await getAssignedShift(
     matchedGuard.guardId
-);
+ );
 
-// Load today's attendance record
-const record = await getTodayShiftRecord(
+ // Load today's attendance record
+ const record = await getTodayShiftRecord(
     matchedGuard.guardId
-);
+ );
 
-// Save session
-setCurrentSession(
+ // Save session
+ setCurrentSession(
     matchedGuard,
     shift,
     record
-);
+ );
 
-return matchedGuard;
+ return matchedGuard;
 
 }
 
@@ -537,11 +579,27 @@ clockInBtn.addEventListener("click", async () => {
             guard.guardId
         );
 
-        if (!shift) {
 
-            alert("No shift assigned.");
+        if(!shift){
 
-            return;
+            alert(
+                      "No assigned shift found."
+                );
+
+            return null;
+
+        }
+
+
+        const insideSite =
+               await verifyGuardInsideSite(
+          shift.siteId
+        );
+
+
+        if(!insideSite){
+
+             return null;
 
         }
 
@@ -586,15 +644,7 @@ clockInBtn.addEventListener("click", async () => {
 
         );
 
-        const insideSite = await verifyGPS(
-            shift.siteId
-        );
-
-        if (!insideSite) {
-
-            return;
-
-        }
+        
 
         const success = await createShiftRecord(guard, shift);
 
@@ -808,72 +858,9 @@ function isWorkingDay(shift) {
 }
 // GPS
 
-async function getCurrentPosition(){
 
-    return new Promise((resolve,reject)=>{
 
-        navigator.geolocation.getCurrentPosition(
 
-            position=>{
-
-                console.log("GPS Success:", position);
-
-                resolve(position);
-
-            },
-
-            error=>{
-
-                console.error("GPS Error:", error);
-
-                alert(
-                    "GPS Error\n\n" +
-                    "Code: " + error.code +
-                    "\nMessage: " + error.message
-                );
-
-                reject(error);
-
-            },
-
-            {
-                enableHighAccuracy:true,
-                timeout:30000,
-                maximumAge:60000
-                
-            }
-
-        );
-
-    });
-
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2){
-
-    const R = 6371000;
-
-    const dLat = (lat2-lat1) * Math.PI / 180;
-
-    const dLon = (lon2-lon1) * Math.PI / 180;
-
-    const a =
-
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-
-        Math.cos(lat1*Math.PI/180) *
-
-        Math.cos(lat2*Math.PI/180) *
-
-        Math.sin(dLon/2) *
-
-        Math.sin(dLon/2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-
-    return R * c;
-
-}
 
 // GET SITE
 
@@ -3482,3 +3469,179 @@ window.addEventListener(
     }
 
 );
+
+//-------------------------- CHECKING RADIUS-----------------------------------------------------------------
+
+// ============================================
+// SITE LOCATION VERIFICATION
+// ============================================
+
+function getCurrentPosition(){
+
+    return new Promise((resolve,reject)=>{
+
+        navigator.geolocation.getCurrentPosition(
+
+            position=>{
+
+                resolve(position);
+
+            },
+
+            error=>{
+
+                alert(
+                    "Unable to get GPS location."
+                );
+
+                reject(error);
+
+            },
+
+            {
+                enableHighAccuracy:true,
+                timeout:10000,
+                maximumAge:0
+            }
+
+        );
+
+    });
+
+}
+
+function calculateDistance(
+    lat1,
+    lon1,
+    lat2,
+    lon2
+){
+
+    const R = 6371000; // meters
+
+    const dLat =
+        (lat2-lat1) *
+        Math.PI / 180;
+
+
+    const dLon =
+        (lon2-lon1) *
+        Math.PI / 180;
+
+
+    const a =
+        Math.sin(dLat/2) *
+        Math.sin(dLat/2)
+
+        +
+
+        Math.cos(
+            lat1 *
+            Math.PI /180
+        )
+
+        *
+
+        Math.cos(
+            lat2 *
+            Math.PI /180
+        )
+
+        *
+
+        Math.sin(dLon/2)
+        *
+        Math.sin(dLon/2);
+
+
+    const c =
+        2 *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1-a)
+        );
+
+
+    return R*c;
+
+}
+
+async function verifyGuardInsideSite(siteId){
+
+
+    const siteSnap =
+        await getDoc(
+            doc(db,"sites",siteId)
+        );
+
+
+    if(!siteSnap.exists()){
+
+        alert(
+            "Site information missing."
+        );
+
+        return false;
+
+    }
+
+
+    const site =
+        siteSnap.data();
+
+
+    const position =
+        await getCurrentPosition();
+
+
+    const guardLat =
+        position.coords.latitude;
+
+
+    const guardLng =
+        position.coords.longitude;
+
+
+
+    const distance =
+        calculateDistance(
+
+            guardLat,
+            guardLng,
+
+            site.latitude,
+            site.longitude
+
+        );
+
+
+    console.log(
+        "Distance from site:",
+        distance,
+        "meters"
+    );
+
+
+
+    if(distance > Number(site.radius)){
+
+
+        alert(
+
+            "You are outside the site area.\n\n"+
+
+            "Distance: "+
+            Math.round(distance)+
+            " meters"
+
+        );
+
+
+        return false;
+
+    }
+
+
+    return true;
+
+}
