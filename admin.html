@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEWLOOK Security System - Admin</title>
+
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+
+            <h2>NEWLOOK</h2>
+
+            <p>Security System</p>
+
+        </div>
+
+        <ul class="menu">
+
+            <li class="active" data-section="dashboard">
+                Dashboard
+            </li>
+
+            <li data-section="guards">
+                Guard Management
+            </li>
+
+            <li data-section="sites">
+                Site Management
+            </li>
+
+            <li data-section="shifts">
+                Shift Management
+            </li>
+
+            <li data-section="attendance">
+                Attendance
+            </li>
+
+            <li data-section="reports">
+                Reports
+            </li>
+
+            <li data-section="patrols">
+                <i class="fas fa-route"></i>
+               Patrol Monitoring
+            </li>
+
+            <li data-section="visitors">
+                Visitors
+            </li>
+
+            <li data-section="incidents">
+                Incidents
+            </li>
+
+            <li data-section="panic">
+                Panic Alerts
+            </li>
+
+            <li data-section="analytics">
+                Analytics
+            </li>
+
+            <li data-section="broadcast">
+                Broadcast
+            </li>
+
+        </ul>
+
+    </aside>
+
+    <!-- Main -->
+
+    <main class="main">
+
+        <!-- Header -->
+
+        <header class="header">
+
+            <h2>Administrator Dashboard</h2>
+
+            <button id="logoutBtn">
+                Logout
+            </button>
+
+        </header>
+
+        <!-- Dashboard -->
+
+        <section id="dashboard" class="page active-page">
+
+            <h3>Live Dashboard</h3>
+
+        </section>
+
+        <!-- Guards -->
+
+        <section id="guards" class="page">
+
+    <h2>Guard Management</h2>
+
+    <div class="guard-form">
+
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Employee ID</label>
+                <input type="text" id="employeeID" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="fullName">
+            </div>
+
+            <div class="form-group">
+                <label>Phone</label>
+                <input type="text" id="phone">
+            </div>
+
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="emailAddress">
+            </div>
+
+            <div class="form-group">
+                <label>Site</label>
+
+                <select id="siteSelect">
+
+                    <option value="">Select Site</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Role</label>
+
+                <select id="role">
+
+                    <option>Security</option>
+                    <option>Assistant</option>
+                    <option>General Worker</option>
+                    <option>Cashier</option>
+                    <option>Supervisor</option>
+                    <option>Manager</option>
+                    <option>Other</option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Department</label>
+
+                <select id="department">
+
+                    <option>Security</option>
+                    <option>Staff</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Status</label>
+
+                <select id="status">
+
+                    <option>Active</option>
+                    <option>Suspended</option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <div class="photo-area">
+
+            <video id="camera" autoplay playsinline></video>
+
+            <canvas id="canvas" hidden></canvas>
+
+            <img id="photoPreview">
+
+            
+
+        </div>
+
+        <div class="button-row">
+
+            <button id="openCameraBtn">Open Camera</button>
+
+            <button id="captureBtn">Capture</button>
+
+            <button id="uploadPhotoBtn">Upload Photo</button>
+
+            <input type="file" id="photoInput" accept="image/*" hidden>
+
+            <button id="saveGuardBtn">Save Guard</button>
+
+            <button id="updateGuardBtn">Update</button>
+
+            <button id="clearGuardBtn">Clear</button>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <div class="table-toolbar">
+
+        <input
+            type="text"
+            id="searchGuard"
+            placeholder="Search Guard">
+
+        <select id="filterStatus">
+
+            <option value="">All Status</option>
+
+            <option>Active</option>
+
+            <option>Suspended</option>
+
+        </select>
+
+        <button id="downloadPDFBtn">PDF</button>
+
+        <button id="downloadExcelBtn">Excel</button>
+
+    </div>
+
+    <table id="guardTable">
+
+        <thead>
+
+            <tr>
+
+                <th>Photo</th>
+
+                <th>Employee ID</th>
+
+                <th>Full Name</th>
+
+                <th>Phone</th>
+
+                <th>Email</th>
+
+                <th>Role</th>
+
+                <th>Department</th>
+
+                <th>Site</th>
+
+                <th>Status</th>
+
+                <th>Action</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="guardTableBody">
+
+        </tbody>
+
+    </table>
+
+</section>
+
+        <!-- Sites -->
+
+        <section id="sites" class="page">
+
+    <h2>Site Management</h2>
+
+    <div class="site-form">
+
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Site Name</label>
+                <input
+                    type="text"
+                    id="siteName"
+                    placeholder="Site Name">
+            </div>
+
+            <div class="form-group">
+                <label>Address</label>
+                <input
+                    type="text"
+                    id="siteAddress"
+                    placeholder="Address">
+            </div>
+
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Latitude</label>
+                <input
+                    type="number"
+                    step="any"
+                    id="siteLatitude">
+            </div>
+
+            <div class="form-group">
+                <label>Longitude</label>
+                <input
+                    type="number"
+                    step="any"
+                    id="siteLongitude">
+            </div>
+
+            <div class="form-group">
+                <label>Radius (Meters)</label>
+                <input
+                    type="number"
+                    id="siteRadius">
+            </div>
+
+        </div>
+
+        <div class="button-row">
+
+            <button type="button" id="saveSiteBtn">
+
+                Save Site
+
+            </button>
+
+            <button type="button" id="updateSiteBtn">
+
+                Update Site
+
+            </button>
+
+            <button type="button" id="clearSiteBtn">
+
+                Clear
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <div class="table-toolbar">
+
+        <input
+            type="text"
+            id="searchSite"
+            placeholder="Search Site">
+
+    </div>
+
+    <table id="siteTable">
+
+        <thead>
+
+            <tr>
+
+                <th>Site Name</th>
+
+                <th>Address</th>
+
+                <th>Latitude</th>
+
+                <th>Longitude</th>
+
+                <th>Radius</th>
+
+                <th>Action</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="siteTableBody">
+
+        </tbody>
+
+    </table>
+<br><br><br>
+    <!-- CHECKPOINTS -->
+
+    <hr>
+
+<h2>Checkpoint Management</h2>
+
+<div class="checkpoint-form">
+
+    <div class="form-row">
+
+        <div class="form-group">
+
+            <label>Site</label>
+
+            <select id="checkpointSite">
+
+                <option value="">Select Site</option>
+
+            </select>
+
+        </div>
+
+        <div class="form-group">
+
+            <label>Checkpoint Name</label>
+
+            <input
+                type="text"
+                id="checkpointName"
+                placeholder="Checkpoint Name">
+
+        </div>
+
+    </div>
+
+    <div class="button-row">
+
+        <button id="saveCheckpointBtn">
+
+            Save Checkpoint
+
+        </button>
+
+        <button id="updateCheckpointBtn">
+
+            Update
+
+        </button>
+
+        <button id="clearCheckpointBtn">
+
+            Clear
+
+        </button>
+
+    </div>
+
+</div>
+
+<hr>
+
+<table id="checkpointTable">
+
+    <thead>
+
+        <tr>
+
+            <th>Site</th>
+
+            <th>Checkpoint</th>
+
+            <th>Checkpoint Code</th>
+
+            <th>QR</th>
+
+            <th>Action</th>
+
+        </tr>
+
+    </thead>
+
+    <tbody id="checkpointTableBody">
+
+    </tbody>
+
+</table>
+
+</section>
+
+        <!-- Shift -->
+
+        <section id="shifts" class="page">
+
+    <h2>Shift Management</h2>
+
+    <div class="shift-form">
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Guard</label>
+
+                <select id="shiftGuard">
+
+                    <option value="">Select Guard</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Shift Type</label>
+
+                <select id="shiftType">
+
+                    <option value="Day">Day</option>
+
+                    <option value="Night">Night</option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Start Time</label>
+
+                <input type="time" id="shiftStart">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>End Time</label>
+
+                <input type="time" id="shiftEnd">
+
+            </div>
+
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Grace Arrival (Minutes)</label>
+
+                <input
+                    type="number"
+                    id="graceMinutes"
+                    value="10">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Lunch Duration (Minutes)</label>
+
+                <input
+                    type="number"
+                    id="lunchMinutes"
+                    value="60">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Patrol Interval (Minutes)</label>
+
+                <input
+                    type="number"
+                    id="patrolInterval"
+                    value="60">
+
+            </div>
+
+            <div class="form-group">
+
+              <label>Working Days</label>
+
+              <div class="working-days">
+
+              <label><input type="checkbox" value="Monday"> Monday</label>
+
+              <label><input type="checkbox" value="Tuesday"> Tuesday</label>
+
+             <label><input type="checkbox" value="Wednesday"> Wednesday</label>
+
+             <label><input type="checkbox" value="Thursday"> Thursday</label>
+
+             <label><input type="checkbox" value="Friday"> Friday</label>
+
+             <label><input type="checkbox" value="Saturday"> Saturday</label>
+
+             <label><input type="checkbox" value="Sunday"> Sunday</label>
+
+            </div>
+
+</div>
+
+        </div>
+
+        <div class="button-row">
+
+            <button id="saveShiftBtn">
+
+                Save Shift
+
+            </button>
+
+            <button id="updateShiftBtn">
+
+                Update
+
+            </button>
+
+            <button id="clearShiftBtn">
+
+                Clear
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <div class="table-toolbar">
+
+        <input
+            type="text"
+            id="searchShift"
+            placeholder="Search Guard">
+
+    </div>
+
+    <table id="shiftTable">
+
+        <thead>
+
+            <tr>
+
+                <th>Guard</th>
+
+                <th>Shift</th>
+
+                <th>Start</th>
+
+                <th>End</th>
+
+                <th>Grace</th>
+
+                <th>Lunch</th>
+
+                <th>Patrol</th>
+
+                <th>Working Days</th>
+
+                <th>Action</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="shiftTableBody">
+
+        </tbody>
+
+    </table>
+
+</section>
+
+        <!-- Attendance -->
+
+        <section id="attendance" class="page">
+
+            <h3>Attendance</h3>
+
+        </section>
+
+        <!-- Reports -->
+
+        <section id="reports" class="page">
+
+            <h3>Reports Center</h3>
+
+        </section>
+
+        <section id="patrols" class="page">
+
+    <div class="page-header">
+        <h2>Patrol Monitoring</h2>
+        <p>Monitor all guard patrol activities in real time.</p>
+    </div>
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3 id="totalPatrols">0</h3>
+            <p>Total Patrols Today</p>
+        </div>
+
+        <div class="stat-card">
+            <h3 id="guardsOnPatrol">0</h3>
+            <p>Guards On Patrol</p>
+        </div>
+
+        <div class="stat-card">
+            <h3 id="missedPatrols">0</h3>
+            <p>Missed Patrols</p>
+        </div>
+
+        <div class="stat-card">
+            <h3 id="patrolCompliance">0%</h3>
+            <p>Compliance</p>
+        </div>
+
+    </div>
+
+    <div class="filter-bar">
+
+    <input
+        type="text"
+        id="patrolSearch"
+        placeholder="Search Guard..."
+    >
+
+    <select id="patrolSiteFilter">
+        <option value="">All Sites</option>
+    </select>
+
+    <input
+        type="date"
+        id="patrolDateFilter"
+    >
+
+    <button id="clearPatrolFilter">
+        Clear
+    </button>
+
+</div><br><br>
+
+<div class="action-buttons">
+
+    <button id="exportPatrolPDF">
+        Export PDF
+    </button>
+
+    <button id="exportPatrolExcel">
+        Export Excel
+    </button>
+
+</div><br>
+
+    <div class="table-container">
+
+        <table class="data-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Date</th>
+                    <th>Guard</th>
+                    <th>Site</th>
+                    <th>Checkpoint</th>
+                    <th>Location</th>
+                    <th>Scan Time</th>
+                    <th>Status</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="patrolTableBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div id="patrolModal" class="modal">
+
+    <div class="modal-content">
+
+        <span id="closePatrolModal" class="close">&times;</span>
+
+        <h2>Patrol Details</h2>
+
+        <div id="patrolDetails"></div>
+
+    </div>
+
+</div>
+
+</section>
+
+        <!-- Visitors -->
+
+        <section id="visitors" class="page">
+
+    <div class="page-header">
+
+        <h2>Visitor Management</h2>
+
+        <p>Monitor all visitor activities.</p>
+
+    </div>
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+
+            <h3 id="totalVisitors">0</h3>
+
+            <p>Visitors Today</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h3 id="visitorsInside">0</h3>
+
+            <p>Currently Inside</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h3 id="checkedOutVisitors">0</h3>
+
+            <p>Checked Out</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h3 id="companiesVisited">0</h3>
+
+            <p>Companies</p>
+
+        </div>
+
+    </div>
+
+    <div class="filter-bar">
+
+        <input
+            type="text"
+            id="visitorSearch"
+            placeholder="Search Visitor..."
+        >
+
+        <select id="visitorSiteFilter">
+
+            <option value="">
+                All Sites
+            </option>
+
+        </select>
+
+        <select id="visitorStatusFilter">
+
+            <option value="">
+                All Status
+            </option>
+
+            <option value="Inside">
+                Inside
+            </option>
+
+            <option value="Checked Out">
+                Checked Out
+            </option>
+
+        </select>
+
+        <input
+            type="date"
+            id="visitorDateFilter"
+        >
+
+        <button id="clearVisitorFilter">
+
+            Clear
+
+        </button>
+
+    </div>
+
+    <br>
+
+    <div class="action-buttons">
+
+        <button id="exportVisitorPDF">
+
+            Export PDF
+
+        </button>
+
+        <button id="exportVisitorExcel">
+
+            Export Excel
+
+        </button>
+
+    </div>
+
+    <br>
+
+    <div class="table-container">
+
+        <table class="data-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Host</th>
+                    <th>Site</th>
+                    <th>Check In</th>
+                    <th>Status</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="visitorTableBodyAdmin">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <!-- MODAL -->
+
+    <div id="visitorModal" class="modal">
+
+    <div class="modal-content large-modal">
+
+        <span
+            class="close"
+            id="closeVisitorModal"
+        >
+
+            &times;
+
+        </span>
+
+        <h2>
+
+            Visitor Details
+
+        </h2>
+
+        <div id="visitorDetails"></div>
+
+    </div>
+
+</div>
+
+</section>
+
+        <!-- Incidents -->
+
+        <section id="incidents" class="page">
+
+    <h2>Incident Management</h2>
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3>Total</h3>
+            <h1 id="totalIncidents">0</h1>
+        </div>
+
+        <div class="stat-card">
+            <h3>Open</h3>
+            <h1 id="openIncidents">0</h1>
+        </div>
+
+        <div class="stat-card">
+            <h3>Resolved</h3>
+            <h1 id="resolvedIncidents">0</h1>
+        </div>
+
+        <div class="stat-card">
+            <h3>Critical</h3>
+            <h1 id="criticalIncidents">0</h1>
+        </div>
+
+    </div>
+<br><br>
+
+<div class="incident-filters">
+
+    <input
+        id="incidentSearch"
+        placeholder="Search Incident">
+
+    <select id="incidentSiteFilter">
+        <option value="">All Sites</option>
+    </select>
+
+    <select id="incidentGuardFilter">
+        <option value="">All Guards</option>
+    </select>
+
+    <select id="incidentStatusFilter">
+        <option value="">All Status</option>
+    </select>
+
+    <input
+        type="date"
+        id="incidentDateFilter">
+
+</div>
+<br>
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>No.</th>
+                    <th>Date</th>
+                    <th>Guard</th>
+                    <th>Site</th>
+                    <th>Type</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="incidentTableBody"></tbody>
+
+        </table>
+
+    </div>
+
+    <div id="incidentModal" class="modal">
+
+    <div class="modal-content">
+
+        <span
+            id="closeIncidentModal"
+            class="close">
+
+            &times;
+
+        </span>
+
+        <h2>Incident Details</h2>
+
+        <div id="incidentDetails"></div>
+
+    </div>
+
+</div>
+</section>
+
+        <!-- Panic -->
+
+<section id="panic" class="page">
+
+    <h2>Panic Alerts</h2>
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3>Total</h3>
+            <span id="totalPanics">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Active</h3>
+            <span id="activePanics">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Acknowledged</h3>
+            <span id="ackPanics">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Resolved</h3>
+            <span id="resolvedPanics">0</span>
+        </div>
+
+    </div>
+
+    <div class="filters">
+
+        <input
+            id="panicSearch"
+            placeholder="Search..."
+        >
+
+        <select id="panicSiteFilter">
+            <option value="">All Sites</option>
+        </select>
+
+        <select id="panicGuardFilter">
+            <option value="">All Guards</option>
+        </select>
+
+        <select id="panicStatusFilter">
+            <option value="">All Status</option>
+            <option>Active</option>
+            <option>Acknowledged</option>
+            <option>Resolved</option>
+        </select>
+
+        <input
+            type="date"
+            id="panicDateFilter"
+        >
+
+    </div>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Time</th>
+                    <th>Guard</th>
+                    <th>Site</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="panicTableBody"></tbody>
+
+        </table>
+
+    </div>
+
+    <!-- MODAL -->
+
+    <div
+    id="panicModal"
+    class="modal">
+
+    <div class="modal-content">
+
+        <span
+            id="closePanicModal"
+            class="close">
+
+            &times;
+
+        </span>
+
+        <div id="panicDetails"></div>
+
+    </div>
+
+ </div>
+
+</section>
+
+        <!-- Analytics -->
+
+        <section id="analytics" class="page">
+
+            <h3>Analytics</h3>
+
+        </section>
+
+        <!-- Broadcast -->
+
+        <!-- ========================================= -->
+<!-- BROADCAST MANAGEMENT -->
+<!-- ========================================= -->
+
+<section id="broadcast" class="page">
+
+    <div class="page-header">
+
+        <h2>Broadcast Management</h2>
+
+        <p>Create and manage broadcasts for guards.</p>
+
+    </div>
+
+    <!-- Statistics -->
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3>Total</h3>
+            <span id="totalBroadcasts">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Active</h3>
+            <span id="activeBroadcasts">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Archived</h3>
+            <span id="archivedBroadcasts">0</span>
+        </div>
+
+        <div class="stat-card">
+            <h3>Replies</h3>
+            <span id="totalBroadcastReplies">0</span>
+        </div>
+
+    </div>
+
+    <!-- Form -->
+
+    <div class="form-grid">
+
+        <input
+            type="text"
+            id="broadcastTitle"
+            placeholder="Broadcast Title">
+
+        <select id="broadcastPriority">
+
+            <option value="">Priority</option>
+            <option>Low</option>
+            <option>Normal</option>
+            <option>High</option>
+            <option>Emergency</option>
+
+        </select>
+
+        <select id="broadcastTargetType">
+
+            <option value="All">All Guards</option>
+            <option value="Site">Site</option>
+            <option value="Department">Department</option>
+            <option value="Guard">Specific Guard</option>
+
+        </select>
+
+        <input
+            type="text"
+            id="broadcastTargetValue"
+            placeholder="Target Value">
+
+    </div>
+
+    <textarea
+        id="broadcastMessage"
+        placeholder="Broadcast Message"></textarea>
+
+    <div class="broadcast-image">
+
+        <input
+            type="file"
+            id="broadcastPhoto"
+            accept="image/*">
+
+        <img
+            id="broadcastPreview"
+            class="broadcast-preview">
+
+    </div>
+
+    <button id="sendBroadcast">
+
+        Send Broadcast
+
+    </button>
+
+    <hr>
+
+    <!-- Filters -->
+
+    <div class="filters">
+
+        <input
+            type="text"
+            id="broadcastSearch"
+            placeholder="Search">
+
+        <select id="broadcastStatusFilter">
+
+            <option value="">All Status</option>
+            <option>Active</option>
+            <option>Archived</option>
+
+        </select>
+
+        <select id="broadcastPriorityFilter">
+
+            <option value="">All Priority</option>
+            <option>Low</option>
+            <option>Normal</option>
+            <option>High</option>
+            <option>Emergency</option>
+
+        </select>
+
+    </div>
+
+    <!-- Table -->
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Title</th>
+                    <th>Priority</th>
+                    <th>Target</th>
+                    <th>Created</th>
+                    <th>Status</th>
+                    <th>Replies</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="broadcastTableBody"></tbody>
+
+        </table>
+
+    </div>
+
+    <!-- MODAL -->
+
+    <!-- ========================================= -->
+<!-- BROADCAST DETAILS -->
+<!-- ========================================= -->
+
+<div id="broadcastModal" class="modal">
+
+    <div class="modal-content large-modal">
+
+        <span
+            id="closeBroadcastModal"
+            class="close">
+
+            &times;
+
+        </span>
+
+        <div id="broadcastDetails"></div>
+
+    </div>
+
+</div>
+
+</section>
+
+    </main>
+
+</div>
+
+
+<!--QR MODAL  -->
+<div id="qrModal" class="modal">
+
+    <div class="modal-content">
+
+        <span id="closeQrModal" class="close">&times;</span>
+
+        <h2>NEWLOOK CHECKPOINT</h2>
+
+        <p id="qrCheckpointName"></p>
+
+        <div id="qrContainer"></div>
+
+        <button id="downloadQrBtn">
+
+            Download QR
+
+        </button>
+
+    </div>
+
+</div>
+<!-- QR CODE -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- EXCEL -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- FACE API -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script type="module" src="js/firebase.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/admin.js"></script>
+
+</body>
+</html>

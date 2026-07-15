@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NEWLOOK Security System - Guard</title>
+
+    <link rel="stylesheet" href="css/guard.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+
+            <h2>NEWLOOK</h2>
+
+            <p>Security System</p>
+
+        </div>
+
+        <ul class="menu">
+
+            <li class="active" data-page="clock">
+                Clock In / Out
+            </li>
+
+            <li data-page="patrol">
+                Patrol
+            </li>
+
+            <li data-page="lunch">
+                Lunch
+            </li>
+
+            <li data-page="visitorPage">
+                Visitors Management
+            </li>
+
+            <li data-page="incident">
+                Incidents
+            </li>
+
+            <li data-page="panic">
+                Panic Alert
+            </li>
+
+            <li data-page="broadcast">
+                Broadcast
+            </li>
+
+        </ul>
+
+    </aside>
+
+    <!-- Main -->
+
+    <main class="main">
+
+        <header class="header">
+
+            <div>
+
+                <h2>Guard Dashboard</h2>
+
+                <p id="currentDateTime"></p>
+
+            </div>
+
+            <div class="guard-info">
+
+                <p>
+                    <strong>Guard:</strong>
+                    <span id="guardName">Not Verified</span>
+                </p>
+
+                <p>
+                    <strong>Site:</strong>
+                    <span id="guardSite">---</span>
+                </p>
+
+                <p>
+                    <strong>Status:</strong>
+                    <span id="dutyStatus">OFF DUTY</span>
+                </p>
+
+            </div>
+
+        </header>
+
+        <!-- CLOCK -->
+
+        <section id="clock" class="page active-page">
+
+            <h2>Clock In / Out</h2>
+
+            <div class="action-card">
+
+                <button id="clockInBtn">
+                    Clock In
+                </button>
+
+                <button id="clockOutBtn">
+                    Clock Out
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- PATROL -->
+
+        <section id="patrol" class="page">
+
+            <h2>Patrol</h2>
+
+            <div class="action-card">
+
+                <button id="scanCheckpointBtn">
+
+                    Scan Checkpoint QR
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- LUNCH -->
+
+        <section id="lunch" class="page">
+
+            <h2>Lunch</h2>
+
+            <div class="action-card">
+
+                <button id="lunchInBtn">
+
+                    Lunch In
+
+                </button>
+
+                <button id="lunchOutBtn">
+
+                    Lunch Out
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- VISITORS -->
+
+        <section id="visitorPage" class="page">
+
+    <div class="page-header">
+
+        <h2>Visitor Management</h2>
+
+        <p>Register and manage visitors.</p>
+
+    </div>
+
+    <div class="visitor-container">
+
+        <div class="visitor-camera">
+
+            <video
+                id="visitorVideo"
+                autoplay
+                playsinline
+            ></video>
+
+            <canvas
+                id="visitorCanvas"
+                style="display:none;"
+            ></canvas>
+
+            <img
+                id="visitorPreview"
+                class="visitor-preview"
+            >
+
+            <button id="captureVisitorPhoto">
+
+                Capture Photo
+
+            </button>
+
+            <button id="switchVisitorCameraBtn">
+    Switch Camera
+</button>
+
+        </div>
+
+        <div class="visitor-form">
+
+            <input
+                type="text"
+                id="visitorName"
+                placeholder="Full Name"
+            >
+
+            <input
+                type="text"
+                id="visitorID"
+                placeholder="ID / Passport Number"
+            >
+
+            <input
+                type="text"
+                id="visitorPhone"
+                placeholder="Phone Number"
+            >
+
+            <input
+                type="text"
+                id="visitorCompany"
+                placeholder="Company"
+            >
+
+            <input
+                type="text"
+                id="visitorPurpose"
+                placeholder="Purpose of Visit"
+            >
+
+            <input
+                type="text"
+                id="visitorHostName"
+                placeholder="hostName"
+            >
+
+            <input
+              type="text"
+              id="visitorHostEmployeeID"
+              placeholder="Host Employee ID"
+            >
+
+            <input
+                type="text"
+                id="visitorVehicle"
+                placeholder="Vehicle Registration"
+            >
+
+            <input
+                type="text"
+                id="visitorBadge"
+                placeholder="Badge Number"
+            >
+
+            <textarea
+                id="visitorNotes"
+                placeholder="Notes"
+            ></textarea>
+
+            <button id="checkInVisitorBtn">
+
+                Visitor Check In
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <h3>Visitors Inside</h3>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Host</th>
+                    <th>Check In</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="visitorTableBody"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+       
+
+        <!-- INCIDENT -->
+
+        <!-- INCIDENT -->
+
+<section id="incident" class="page">
+
+    <div class="page-header">
+
+        <h2>Incident Management</h2>
+
+        <p>Capture and report security incidents.</p>
+
+    </div>
+
+    <div class="incident-container">
+
+        <!-- CAMERA -->
+
+        <div class="incident-camera">
+
+            <video
+                id="incidentVideo"
+                autoplay
+                playsinline
+            ></video>
+
+            <canvas
+                id="incidentCanvas"
+                style="display:none;"
+            ></canvas>
+
+            <img
+                id="incidentPreview"
+                class="incident-preview"
+            >
+
+            <button id="captureIncidentPhoto">
+
+                Capture Photo
+
+            </button>
+
+            <button id="switchIncidentCameraBtn">
+    Switch Camera
+</button>
+
+        </div>
+
+        <!-- FORM -->
+
+        <div class="incident-form">
+
+            <select id="incidentType">
+
+                <option value="">
+
+                    Select Incident Type
+
+                </option>
+
+                <option>Theft</option>
+
+                <option>Assault</option>
+
+                <option>Fire</option>
+
+                <option>Medical Emergency</option>
+
+                <option>Suspicious Person</option>
+
+                <option>Suspicious Vehicle</option>
+
+                <option>Property Damage</option>
+
+                <option>Trespassing</option>
+
+                <option>Vandalism</option>
+
+                <option>Noise Complaint</option>
+
+                <option>Accident</option>
+
+                <option>Unauthorized Access</option>
+
+                <option>Equipment Failure</option>
+
+                <option>Other</option>
+
+            </select>
+
+            <select id="incidentPriority">
+
+                <option value="">
+
+                    Select Priority
+
+                </option>
+
+                <option>Low</option>
+
+                <option>Medium</option>
+
+                <option>High</option>
+
+                <option>Critical</option>
+
+            </select>
+
+            <input
+                type="text"
+                id="incidentLocation"
+                placeholder="Incident Location"
+            >
+
+            <textarea
+                id="incidentDescription"
+                placeholder="Incident Description"
+            ></textarea>
+
+            <textarea
+                id="incidentWitnesses"
+                placeholder="Witnesses"
+            ></textarea>
+
+            <textarea
+                id="incidentActions"
+                placeholder="Immediate Action Taken"
+            ></textarea>
+
+            <button id="reportIncidentBtn">
+
+                Report Incident
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <h3>Open Incidents</h3>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Incident No</th>
+
+                    <th>Type</th>
+
+                    <th>Priority</th>
+
+                    <th>Time</th>
+
+                    <th>Status</th>
+
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="incidentTableBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+        <!-- PANIC -->
+
+        <section id="panic" class="page">
+
+    <div class="page-header">
+
+        <h2>Panic Alert</h2>
+
+        <p>
+            Send an emergency alert to Control Room.
+        </p>
+
+    </div>
+
+    <div class="panic-container">
+
+        <div class="panic-camera">
+
+            <video
+                id="panicVideo"
+                autoplay
+                playsinline
+            ></video>
+
+            <canvas
+                id="panicCanvas"
+                style="display:none;"
+            ></canvas>
+
+            <img
+                id="panicPreview"
+                class="panic-preview"
+            >
+
+            <button id="capturePanicPhoto">
+
+                Capture Evidence
+
+            </button>
+
+            <button id="switchPanicCameraBtn">
+    Switch Camera
+</button>
+
+        </div>
+
+        <div class="panic-form">
+
+            <textarea
+
+                id="panicReason"
+
+                placeholder="Reason (Optional)"
+
+            ></textarea>
+
+            <button
+
+                id="sendPanicAlertBtn"
+
+                class="panic-button"
+
+                
+
+            >
+
+                🚨 SEND PANIC ALERT
+
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+        <!-- BROADCAST -->
+
+<section id="broadcast" class="page">
+
+    <div class="page-header">
+
+        <h2>Broadcast Messages</h2>
+
+        <p>Receive and reply to broadcasts.</p>
+
+    </div>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Priority</th>
+                    <th>Title</th>
+                    <th>Target</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="broadcastTableBody"></tbody>
+
+        </table>
+
+    </div>
+
+    <!-- MODAL -->
+
+    <div id="broadcastModal" class="modal">
+
+    <div class="modal-content large-modal">
+
+        <span
+            id="closeBroadcastModal"
+            class="close">
+
+            &times;
+
+        </span>
+
+        <div id="broadcastDetails"></div>
+
+    </div>
+
+</div>
+
+</section>
+
+    </main>
+
+</div>
+
+
+<!-- FACE API MODAL -->
+ <!-- ========================================= -->
+<!-- FACE VERIFICATION MODAL -->
+<!-- ========================================= -->
+
+<div id="faceModal" class="modal">
+
+    <div class="modal-content face-modal">
+
+        <h2>Face Verification</h2>
+
+        <p>Look directly at the camera.</p>
+
+        <video
+            id="faceVideo"
+            autoplay
+            muted
+            playsinline>
+        </video>
+
+        <canvas
+            id="faceCanvas"
+            hidden>
+        </canvas>
+
+        <p id="faceStatus">
+
+            Waiting...
+
+        </p>
+
+        <button id="cancelFaceBtn">
+
+            Cancel
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+
+<div id="qrScannerContainer" style="display:none;">
+
+    <h3>Scan Checkpoint</h3>
+
+    <div id="qr-reader"></div>
+
+    <button id="closeScannerBtn">
+        Close
+    </button>
+
+</div>
+
+<!-- QR CODE -->
+ <script src="https://unpkg.com/html5-qrcode"></script>
+<!-- FACE API -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script type="module" src="js/firebase.js"></script>
+<script type="module" src="js/guard.js"></script>
+
+</body>
+
+</html>
