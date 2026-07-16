@@ -1,11 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>NEWLOOK Security System | Attendance</title>
+
+<link rel="stylesheet" href="Css/attendance.css">
+
 </head>
+
 <body>
-    <script type="module" src="Js/firebase.js"></script>
+
+<div class="attendance-app">
+
+    <!-- Full Screen Camera -->
+
+    <video
+        id="attendanceVideo"
+        autoplay
+        muted
+        playsinline>
+    </video>
+
+    <canvas
+        id="attendanceCanvas">
+    </canvas>
+
+    <!-- Dark Overlay -->
+
+    <div class="camera-overlay"></div>
+
+    <!-- Top Header -->
+
+    <header class="top-bar">
+
+        <div class="logo">
+
+            <h1>NEWLOOK</h1>
+
+            <span>Security System</span>
+
+        </div>
+
+        <div class="live-clock">
+
+            <h2 id="currentTime">
+                --:--:--
+            </h2>
+
+            <p id="currentDate">
+                Loading...
+            </p>
+
+        </div>
+
+    </header>
+
+    <!-- Center Detection Area -->
+
+    <div class="scanner-area">
+
+        <div class="scanner-frame">
+
+            <div class="scanner-line"></div>
+
+        </div>
+
+    </div>
+
+    <!-- Bottom Information Panel -->
+
+    <section class="status-panel">
+
+        <div class="status-header">
+
+            <h2>Attendance Verification</h2>
+
+            <span
+                id="attendanceStatus"
+                class="waiting">
+
+                Waiting for body...
+
+            </span>
+
+        </div>
+
+        <div class="employee-grid">
+
+            <div class="info-card">
+
+                <label>Employee ID</label>
+
+                <span id="employeeDisplay">
+
+                    --
+
+                </span>
+
+            </div>
+
+            <div class="info-card">
+
+                <label>Full Name</label>
+
+                <span id="nameDisplay">
+
+                    --
+
+                </span>
+
+            </div>
+
+            <div class="info-card">
+
+                <label>Department</label>
+
+                <span id="departmentDisplay">
+
+                    --
+
+                </span>
+
+            </div>
+
+            <div class="info-card">
+
+                <label>Site</label>
+
+                <span id="siteDisplay">
+
+                    --
+
+                </span>
+
+            </div>
+
+            <div class="info-card">
+
+                <label>Attendance</label>
+
+                <span id="statusDisplay">
+
+                    Waiting...
+
+                </span>
+
+            </div>
+
+            <div class="info-card">
+
+                <label>Today's Verifications</label>
+
+                <span id="verificationDisplay">
+
+                    0
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+<!-- TensorFlow -->
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
+
+<!-- COCO SSD -->
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+<!-- Face API -->
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<!-- Firebase -->
+
+<script type="module" src="Js/firebase.js"></script>
+
+<!-- Attendance -->
+
+<script type="module" src="Js/attendance.js"></script>
+
 </body>
+
 </html>
