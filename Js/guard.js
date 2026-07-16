@@ -991,6 +991,7 @@ async function createShiftRecord(guard, shift){
         await setDoc(recordRef,{
 
             recordId: recordRef.id,
+            id: recordRef.id,
             date: getTodayDate(),
             createdAt: serverTimestamp(),
 
@@ -2113,19 +2114,20 @@ function renderVisitorTable(){
 
 }
 
-async function checkOutVisitor(id){
+window.checkOutVisitor = async function(id){
 
-   const session = await verifyGuardOnDuty();
+    const session = await verifyGuardOnDuty();
 
- if(!session) return;
+    if(!session) return;
+
 
     const ok = confirm(
-
         "Check this visitor out?"
-
     );
 
+
     if(!ok) return;
+
 
     await updateDoc(
 
@@ -2146,10 +2148,12 @@ async function checkOutVisitor(id){
 
     );
 
+
     alert("Visitor Checked Out.");
 
-}
+};
 loadVisitors();
+
 
 // -------------------------------------INCIDENT MANAGEMENT---------------------------------------------------------
 
@@ -2466,12 +2470,14 @@ async function saveIncident(guard,shift){
 
     });
 
+    if(shift.recordId){
+
     await updateDoc(
 
         doc(
             db,
             "shiftRecords",
-            shift.id
+            shift.recordId
         ),
 
         {
@@ -2482,6 +2488,8 @@ async function saveIncident(guard,shift){
         }
 
     );
+
+ }
 
     alert(
         "Incident Reported Successfully."
@@ -2855,22 +2863,26 @@ async function savePanicAlert(guard,shift){
 
     });
 
+    if(shift.recordId){
+
     await updateDoc(
 
-    doc(
-        db,
-        "shiftRecords",
-        shift.id
-    ),
+        doc(
+            db,
+            "shiftRecords",
+            shift.recordId
+        ),
 
-    {
+        {
 
-        panicAlerts:
-            increment(1)
+            panicAlerts:
+                increment(1)
 
-    }
+        }
 
- );
+    );
+
+ }
 
     alert(
         "🚨 PANIC ALERT SENT"
@@ -3500,8 +3512,8 @@ function getCurrentPosition(){
 
             {
                 enableHighAccuracy:true,
-                timeout:10000,
-                maximumAge:0
+                timeout:30000,
+                maximumAge:5000
             }
 
         );
@@ -3615,11 +3627,40 @@ async function verifyGuardInsideSite(siteId){
         );
 
 
+    console.log("========== GPS CHECK ==========");
+
     console.log(
-        "Distance from site:",
-        distance,
-        "meters"
-    );
+          "Guard Latitude:",
+          guardLat
+        );
+
+    console.log(
+           "Guard Longitude:",
+           guardLng
+        );
+
+    console.log(
+         "Site Latitude:",
+         site.latitude
+        );
+
+    console.log(
+         "Site Longitude:",
+         site.longitude
+        );
+
+    console.log(
+         "Allowed Radius:",
+         site.radius
+        );
+
+    console.log(
+              "Calculated Distance:",
+              distance,
+              "meters"
+        );
+
+    console.log("==============================");
 
 
 
