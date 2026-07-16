@@ -303,6 +303,7 @@ function closeAllCameras() {
 
 }
 
+
 menuItems.forEach(item => {
 
     item.addEventListener("click", () => {
@@ -376,58 +377,130 @@ let currentStream = null;
 
 async function startCamera(){
 
-    currentStream =
+    try{
+
+        // Stop previous camera first
+        if(currentStream){
+
+            currentStream
+            .getTracks()
+            .forEach(track=>track.stop());
+
+            currentStream = null;
+
+            // small delay for browser release
+            await new Promise(resolve =>
+                setTimeout(resolve,300)
+            );
+        }
+
+
+        currentStream =
         await navigator.mediaDevices.getUserMedia({
 
             video:{
+
                 facingMode:"user",
+
                 width:{
                     ideal:640
                 },
+
                 height:{
                     ideal:480
                 }
-            }
+
+            },
+
+            audio:false
 
         });
 
-    faceVideo.srcObject = currentStream;
+
+        faceVideo.srcObject = currentStream;
 
 
-    await new Promise(resolve=>{
+        await new Promise(resolve=>{
 
-        faceVideo.onloadedmetadata = async()=>{
+            faceVideo.onloadedmetadata = async()=>{
 
-            await faceVideo.play();
+                await faceVideo.play();
 
-            resolve();
+                resolve();
 
-        };
+            };
 
-    });
+        });
 
 
-    // Wait until camera actually produces frames
-    while(
-        faceVideo.videoWidth === 0 ||
-        faceVideo.videoHeight === 0
-    ){
+        // Wait for real frames
+        while(
+            faceVideo.videoWidth === 0 ||
+            faceVideo.videoHeight === 0
+        ){
 
-        await new Promise(resolve =>
-            setTimeout(resolve,100)
+            await new Promise(resolve =>
+                setTimeout(resolve,100)
+            );
+
+        }
+
+
+        console.log(
+            "Camera ready:",
+            faceVideo.videoWidth,
+            faceVideo.videoHeight
         );
+
+
+    }
+    catch(error){
+
+        console.error(
+            "Camera error:",
+            error
+        );
+
+
+        if(error.name === "NotReadableError"){
+
+            alert(
+              "Camera is already being used by another application. Close it and try again."
+            );
+
+        }
+
+        else if(error.name === "NotAllowedError"){
+
+            alert(
+              "Camera permission denied."
+            );
+
+        }
+
+        else{
+
+            alert(
+              "Unable to access camera."
+            );
+
+        }
 
     }
 
-
-    console.log(
-        "Camera ready:",
-        faceVideo.videoWidth,
-        faceVideo.videoHeight
-    );
-
 }
 
+window.addEventListener("beforeunload",()=>{
+
+    if(currentStream){
+
+        currentStream
+        .getTracks()
+        .forEach(track=>track.stop());
+
+    }
+
+});
 
 cancelFaceBtn.addEventListener("click",()=>{
 
