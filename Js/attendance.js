@@ -69,6 +69,9 @@ let bodyDetected = false;
 
 let processing = false;
 
+let attendanceStream = null;
+let cameraStarting = false;
+
 
 //====================================================
 // LIVE CLOCK
@@ -151,42 +154,191 @@ async function loadBodyModel(){
 // START CAMERA
 //====================================================
 
+//====================================================
+// START CAMERA SAFELY
+//====================================================
+
 async function startCamera(){
 
-    if(currentStream){
 
-        currentStream.getTracks().forEach(track=>track.stop());
+    try{
 
-    }
 
-    currentStream =
-    await navigator.mediaDevices.getUserMedia({
+        if(cameraStarting){
 
-        video:{
+            console.log(
+                "Camera already starting"
+            );
 
-            facingMode:"user",
-
-            width:{
-                ideal:1280
-            },
-
-            height:{
-                ideal:720
-            }
+            return;
 
         }
 
-    });
 
-    video.srcObject =
-    currentStream;
+        cameraStarting = true;
 
-    await video.play();
 
-    console.log("Camera started.");
+
+        // Stop previous camera first
+
+        if(attendanceStream){
+
+            attendanceStream
+            .getTracks()
+            .forEach(track=>{
+
+                track.stop();
+
+            });
+
+
+            attendanceStream=null;
+
+        }
+
+
+
+        const devices =
+        await navigator.mediaDevices
+        .enumerateDevices();
+
+
+
+        const cameras =
+        devices.filter(
+            d=>d.kind==="videoinput"
+        );
+
+
+
+        if(cameras.length===0){
+
+            throw new Error(
+                "No camera found"
+            );
+
+        }
+
+
+
+        attendanceStream =
+        await navigator.mediaDevices
+        .getUserMedia({
+
+            video:{
+
+                facingMode:"user",
+
+                width:{
+                    ideal:1280
+                },
+
+                height:{
+                    ideal:720
+                }
+
+            },
+
+            audio:false
+
+        });
+
+
+
+        attendanceVideo.srcObject =
+        attendanceStream;
+
+
+
+        await new Promise(resolve=>{
+
+
+            attendanceVideo.onloadedmetadata =
+            async()=>{
+
+
+                await attendanceVideo.play();
+
+
+                resolve();
+
+
+            };
+
+
+        });
+
+
+
+        console.log(
+            "Camera started:",
+            attendanceVideo.videoWidth,
+            attendanceVideo.videoHeight
+        );
+
+
+
+    }
+
+    catch(error){
+
+
+        console.error(
+            "Camera error:",
+            error
+        );
+
+
+        if(error.name==="NotReadableError"){
+
+
+            setStatus(
+                "Camera busy. Close other apps using camera.",
+                "error"
+            );
+
+
+        }
+
+
+    }
+
+    finally{
+
+
+        cameraStarting=false;
+
+
+    }
+
 
 }
 
+//====================================================
+// STOP CAMERA WHEN PAGE CLOSES
+//====================================================
+
+window.addEventListener(
+"beforeunload",
+()=>{
+
+
+    if(attendanceStream){
+
+
+        attendanceStream
+        .getTracks()
+        .forEach(track=>{
+
+            track.stop();
+
+        });
+
+
+    }
+
+
+});
 
 //====================================================
 // INITIALIZE
