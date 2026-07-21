@@ -1957,8 +1957,9 @@ hr{
 
 footer{
 
-    margin-left:280px;
-    width:calc(100% - 280px);
+    width:100%;
+
+    margin-left:0;
 
     background:linear-gradient(
         135deg,
@@ -1978,6 +1979,27 @@ footer{
 
 }
 
+footer h3{
+
+    font-size:24px;
+    color:#38bdf8;
+    margin-bottom:10px;
+
+}
+
+footer p{
+
+    color:#cbd5e1;
+    font-size:14px;
+
+}
+
+footer .developer{
+
+    color:#22c55e;
+    font-weight:800;
+
+}
 
 /* ==========================================
    SECURITY HOVER EFFECTS
@@ -2805,40 +2827,3 @@ strong{
     }
 }
 
-/* ------------------FOOTER----------------------------- */
-
-@media (max-width:1024px){
-
-    footer{
-        margin-left:200px;
-        width:calc(100% - 200px);
-        padding:20px;
-    }
-
-    footer h3{
-        font-size:22px;
-    }
-
-    footer p{
-        font-size:13px;
-    }
-
-}
-
-@media (max-width:768px){
-
-    footer{
-        margin-left:160px;
-        width:calc(100% - 160px);
-        padding:15px;
-    }
-
-    footer h3{
-        font-size:18px;
-    }
-
-    footer p{
-        font-size:12px;
-    }
-
-}
