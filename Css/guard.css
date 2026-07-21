@@ -2701,3 +2701,140 @@ strong{
 /* ==========================================
    END OF NEWLOOK GUARD SYSTEM CSS
 ========================================== */
+
+/* ==========================================
+   PHONE & TABLET - SAME LAYOUT, FIT SCREEN
+========================================== */
+
+@media (max-width:1024px){
+
+    .sidebar{
+        width:200px;
+    }
+
+    .main{
+        margin-left:200px;
+        width:calc(100% - 200px);
+        padding:15px;
+    }
+
+    .header{
+        padding:18px;
+    }
+
+    .header h2{
+        font-size:24px;
+    }
+
+    .guard-info{
+        min-width:180px;
+        padding:15px;
+    }
+
+    .page-header{
+        padding:18px;
+    }
+
+    .page-header h2{
+        font-size:22px;
+    }
+
+    .action-card{
+        max-width:100%;
+    }
+
+    .visitor-container,
+    .incident-container,
+    .panic-container{
+        grid-template-columns:300px 1fr;
+        gap:15px;
+    }
+
+    video{
+        height:240px;
+    }
+
+    #clockInBtn,
+    #clockOutBtn,
+    #scanCheckpointBtn,
+    #lunchInBtn,
+    #lunchOutBtn{
+        height:55px;
+        font-size:16px;
+    }
+
+    #sendPanicAlertBtn{
+        height:70px;
+        font-size:20px;
+    }
+
+    input,
+    select,
+    textarea{
+        padding:12px;
+        font-size:14px;
+    }
+
+    .table-container th,
+    .table-container td{
+        padding:12px;
+        font-size:13px;
+    }
+}
+
+@media (max-width:768px){
+
+    .sidebar{
+        width:160px;
+    }
+
+    .logo h2{
+        font-size:22px;
+    }
+
+    .logo p{
+        font-size:12px;
+    }
+
+    .menu li{
+        padding:12px;
+        font-size:13px;
+    }
+
+    .main{
+        margin-left:160px;
+        width:calc(100% - 160px);
+        padding:10px;
+    }
+
+    .header{
+        padding:15px;
+    }
+
+    .header h2{
+        font-size:20px;
+    }
+
+    .guard-info{
+        min-width:150px;
+        font-size:13px;
+    }
+
+    .visitor-container,
+    .incident-container,
+    .panic-container{
+        grid-template-columns:240px 1fr;
+    }
+
+    video{
+        height:190px;
+    }
+
+    .table-container{
+        overflow-x:auto;
+    }
+
+    table{
+        min-width:650px;
+    }
+}
