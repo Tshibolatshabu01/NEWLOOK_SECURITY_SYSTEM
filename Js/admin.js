@@ -5525,3 +5525,1179 @@ window.addEventListener("click",event=>{
     }
 
 });
+
+// --------------------------------------------LIVE ATTENDANCE----------------------------------------------------
+const attendanceTableBody =
+document.getElementById("attendanceTableBody");
+console.log("attendanceTableBody =", attendanceTableBody);
+
+const attendanceEmployee =
+document.getElementById("attendanceEmployee");
+
+const attendanceDepartment =
+document.getElementById("attendanceDepartment");
+
+const attendanceSite =
+document.getElementById("attendanceSite");
+
+const attendanceShift =
+document.getElementById("attendanceShift");
+
+const attendanceStatus =
+document.getElementById("attendanceStatus");
+
+const attendanceReportBody =
+document.getElementById("attendanceReportBody");
+
+const attendanceDetailsModal =
+document.getElementById("attendanceDetailsModal");
+
+const attendanceDetailsContent =
+document.getElementById("attendanceDetailsContent");
+
+const closeAttendanceDetails =
+document.getElementById("closeAttendanceDetails");
+
+const attendancePdfBtn =
+document.getElementById("attendancePdfBtn");
+
+const attendanceExcelBtn =
+document.getElementById("attendanceExcelBtn");
+
+const totalPresentCard =
+document.getElementById("totalPresentCard");
+
+const totalLateCard =
+document.getElementById("totalLateCard");
+
+const totalOvertimeCard =
+document.getElementById("totalOvertimeCard");
+
+const completedShiftCard =
+document.getElementById("completedShiftCard");
+
+const attendancePercentageCard =
+document.getElementById("attendancePercentageCard");
+
+const attendanceDate =
+document.getElementById("attendanceDate");
+
+const attendancePeriod =
+document.getElementById("attendancePeriod");
+
+const attendanceFrom =
+document.getElementById("attendanceFrom");
+
+const attendanceTo =
+document.getElementById("attendanceTo");
+
+attendanceEmployee.addEventListener("change", filterAttendanceReports);
+
+attendanceDepartment.addEventListener("change", filterAttendanceReports);
+
+attendanceSite.addEventListener("change", filterAttendanceReports);
+
+attendanceShift.addEventListener("change", filterAttendanceReports);
+
+attendanceStatus.addEventListener("change", filterAttendanceReports);
+
+attendanceDate.addEventListener("change", filterAttendanceReports);
+
+attendancePeriod.addEventListener("change", filterAttendanceReports);
+
+attendanceFrom.addEventListener("change", filterAttendanceReports);
+
+attendanceTo.addEventListener("change", filterAttendanceReports);
+
+loadLiveAttendance();
+
+loadAttendanceReports();
+let liveAttendance = [];
+//====================================================
+// ATTENDANCE REPORTS
+//====================================================
+
+let attendanceReports = [];
+
+let filteredAttendanceReports = [];
+
+function loadLiveAttendance(){
+
+    const q = query(
+
+        collection(db,"attendance"),
+
+        orderBy("timestamp","desc")
+
+    );
+
+
+
+    onSnapshot(q,(snapshot)=>{
+
+        liveAttendance = [];
+
+
+
+        snapshot.forEach(doc=>{
+
+            liveAttendance.push({
+
+                id:doc.id,
+
+                ...doc.data()
+
+            });
+
+        });
+
+
+
+        renderLiveAttendance();
+
+        loadLiveAttendanceSummary();
+
+    });
+
+}
+
+function getLatestAttendance(records){
+
+    const latest = {};
+
+
+
+    records.forEach(record=>{
+
+        latest[record.employeeID] = record;
+
+    });
+
+
+
+    return Object.values(latest);
+
+}
+
+function renderLiveAttendance(){
+
+    if(!attendanceTableBody){
+
+        console.error("attendanceTableBody not found.");
+
+        return;
+
+    }
+
+    const data = getLatestAttendance(liveAttendance);
+
+    attendanceTableBody.innerHTML = "";
+
+    data.forEach(record=>{
+
+        const status =
+        record.action === "IN"
+        ? "ON DUTY"
+        : "OFF DUTY";
+
+        const badge =
+        record.action === "IN"
+        ? "status-active"
+        : "status-off";
+
+        attendanceTableBody.innerHTML += `
+
+        <tr>
+
+            <td>${record.employeeID}</td>
+
+            <td>${record.fullName}</td>
+
+            <td>${record.department}</td>
+
+            <td>${record.role || "-"}</td>
+
+            <td>${record.siteName}</td>
+
+            <td>
+                <span class="${badge}">
+                    ${status}
+                </span>
+            </td>
+
+            <td>
+
+                ${
+                record.timestamp
+                ?
+                record.timestamp.toDate().toLocaleTimeString()
+                :
+                "-"
+                }
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+}
+function loadLiveAttendanceSummary(){
+
+    const latest = getLatestAttendance(liveAttendance);
+
+    let present = 0;
+
+    let offDuty = 0;
+
+    latest.forEach(record=>{
+
+        if(record.action==="IN"){
+
+            present++;
+
+        }else{
+
+            offDuty++;
+
+        }
+
+    });
+
+    console.log(
+        "Present:",
+        present,
+        "Off Duty:",
+        offDuty
+    );
+
+}
+
+loadLiveAttendanceSummary();
+
+function loadAttendanceReports(){
+
+    const q = query(
+
+        collection(db,"shiftRecords"),
+
+        orderBy("recordDate","desc")
+
+    );
+
+
+
+    onSnapshot(q,(snapshot)=>{
+
+        attendanceReports = [];
+
+
+
+        snapshot.forEach(doc=>{
+
+            attendanceReports.push({
+
+                id:doc.id,
+
+                ...doc.data()
+
+            });
+
+        });
+
+
+ 
+        loadAttendanceFilters();
+
+        filterAttendanceReports();
+
+        loadAttendanceSummaryCards();
+
+    });
+
+}
+
+function filterAttendanceReports(){
+
+    let filtered = [...attendanceReports];
+
+
+
+    const employee =
+
+    attendanceEmployee.value;
+
+
+
+    const department =
+
+    attendanceDepartment.value;
+
+
+
+    const site =
+
+    attendanceSite.value;
+
+
+
+    const shift =
+
+    attendanceShift.value;
+
+
+
+    const status =
+
+    attendanceStatus.value;
+
+
+
+    if(employee!=="all"){
+
+        filtered = filtered.filter(
+
+            r=>r.employeeID===employee
+
+        );
+
+    }
+
+
+
+    if(department!=="all"){
+
+        filtered = filtered.filter(
+
+            r=>r.department===department
+
+        );
+
+    }
+
+
+
+    if(site!=="all"){
+
+        filtered = filtered.filter(
+
+            r=>r.siteId===site
+
+        );
+
+    }
+
+
+
+    if(shift!=="all"){
+
+        filtered = filtered.filter(
+
+            r=>r.assignedShift===shift
+
+        );
+
+    }
+
+
+
+    if(status!=="all"){
+
+        filtered = filtered.filter(
+
+            r=>r.attendanceStatus===status
+
+        );
+
+    }
+
+
+
+    filteredAttendanceReports = filtered;
+
+    renderAttendanceReports(filtered);
+}
+
+function renderAttendanceReports(records){
+
+    attendanceReportBody.innerHTML="";
+
+
+
+    records.forEach(record=>{
+
+        attendanceReportBody.innerHTML += `
+
+        <tr>
+
+        <td>${record.employeeID}</td>
+
+        <td>${record.guardName}</td>
+
+        <td>${record.department}</td>
+
+        <td>${record.siteName}</td>
+
+        <td>${record.assignedShift}</td>
+
+        <td>${record.attendanceStatus}</td>
+
+        <td>
+
+        ${record.firstClockIn ?
+
+        record.firstClockIn.toDate()
+
+        .toLocaleTimeString()
+
+        : ""}
+
+        </td>
+
+        <td>
+
+        ${record.lastClockOut ?
+
+        record.lastClockOut.toDate()
+
+        .toLocaleTimeString()
+
+        : ""}
+
+        </td>
+
+        <td>
+
+        ${record.lateMinutes}
+
+        </td>
+
+        <td>
+
+        ${record.totalWorkingHours}
+
+        </td>
+
+        <td>
+
+        ${record.expectedWorkingHours}
+
+        </td>
+
+        <td>
+
+        ${record.overtimeMinutes}
+
+        </td>
+
+        <td>
+
+        ${record.attendancePercentage}%
+
+        </td>
+
+        <td>
+
+        <button
+
+        onclick="viewAttendanceRecord('${record.id}')">
+
+        View
+
+        </button>
+
+        </td>
+
+        </tr>
+
+        `;
+
+    });
+
+}
+
+//====================================================
+// MAKE FUNCTIONS AVAILABLE TO HTML
+//====================================================
+
+window.viewAttendanceRecord = viewAttendanceRecord;
+window.downloadAttendancePDF = downloadAttendancePDF;
+window.downloadAttendanceExcel = downloadAttendanceExcel;
+
+function loadAttendanceSummaryCards(){
+
+    const today =
+
+    new Date()
+
+    .toISOString()
+
+    .split("T")[0];
+
+
+
+    const todayRecords =
+
+    attendanceReports.filter(
+
+        r=>r.recordDate===today
+
+    );
+
+
+
+    totalPresentCard.textContent =
+
+    todayRecords.length;
+
+
+
+    totalLateCard.textContent =
+
+    todayRecords.filter(
+
+        r=>r.lateMinutes>0
+
+    ).length;
+
+
+
+    totalOvertimeCard.textContent =
+
+    todayRecords.filter(
+
+        r=>r.overtimeMinutes>0
+
+    ).length;
+
+
+
+    completedShiftCard.textContent =
+
+    todayRecords.filter(
+
+        r=>r.workStatus==="Completed Shift"
+
+    ).length;
+
+
+
+    const average =
+
+    todayRecords.reduce(
+
+        (sum,r)=>
+
+        sum+
+
+        Number(
+
+            r.attendancePercentage
+
+        ),
+
+        0
+
+    );
+
+
+
+    attendancePercentageCard.textContent =
+
+    todayRecords.length
+
+    ?
+
+    (
+
+        average/
+
+        todayRecords.length
+
+    ).toFixed(1)+"%"
+
+    :
+
+    "0%";
+
+}
+
+function viewAttendanceRecord(recordID){
+
+    const record =
+
+    attendanceReports.find(
+
+        r=>r.id===recordID
+
+    );
+
+
+
+    if(!record){
+
+        return;
+
+    }
+
+
+
+    attendanceDetailsContent.innerHTML = `
+
+    <table class="details-table">
+
+        <tr>
+
+            <td>Employee No</td>
+
+            <td>${record.employeeID}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Name</td>
+
+            <td>${record.guardName}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Department</td>
+
+            <td>${record.department}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Site</td>
+
+            <td>${record.siteName}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Shift</td>
+
+            <td>${record.assignedShift}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Scheduled Start</td>
+
+            <td>${record.scheduledStart}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Scheduled End</td>
+
+            <td>${record.scheduledEnd}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Attendance Status</td>
+
+            <td>${record.attendanceStatus}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Late Minutes</td>
+
+            <td>${record.lateMinutes}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Total Hours</td>
+
+            <td>${record.totalWorkingHours}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Expected Hours</td>
+
+            <td>${record.expectedWorkingHours}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Overtime</td>
+
+            <td>${record.overtimeMinutes}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Shortage</td>
+
+            <td>${record.shortageMinutes}</td>
+
+        </tr>
+
+        <tr>
+
+            <td>Attendance %</td>
+
+            <td>${record.attendancePercentage}%</td>
+
+        </tr>
+
+    </table>
+
+    `;
+
+    let periodsHTML = "";
+
+ if(record.attendancePeriods){
+
+ record.attendancePeriods.forEach(period=>{
+
+
+    periodsHTML += `
+
+    <tr>
+
+        <td>
+
+            ${new Date(period.clockIn).toLocaleTimeString()}
+
+        </td>
+
+        <td>
+
+            ${new Date(period.clockOut).toLocaleTimeString()}
+
+        </td>
+
+        <td>
+
+            ${period.minutes} min
+
+        </td>
+
+    </tr>
+
+    `;
+
+    attendanceDetailsContent.innerHTML += `
+
+ <h3>Working Periods</h3>
+
+ <table class="details-table">
+
+ <tr>
+
+ <th>Clock IN</th>
+
+ <th>Clock OUT</th>
+
+ <th>Minutes</th>
+
+ </tr>
+
+ ${periodsHTML}
+
+ </table>
+
+ `;
+
+ });}
+
+
+
+    attendanceDetailsModal.style.display="flex";
+
+}
+
+closeAttendanceDetails.onclick = ()=>{
+
+    attendanceDetailsModal.style.display="none";
+
+};
+
+window.addEventListener("click",(e)=>{
+
+    if(e.target===attendanceDetailsModal){
+
+        attendanceDetailsModal.style.display="none";
+
+    }
+
+});
+
+function calculateAttendancePercentage(record){
+
+    if(record.expectedWorkingMinutes <= 0){
+
+        return 0;
+
+    }
+
+    return (
+
+        (record.totalWorkingMinutes /
+
+        record.expectedWorkingMinutes)
+
+        *100
+
+    ).toFixed(1);
+
+}
+
+function calculatePayrollSummary(records){
+
+    let totalWorked = 0;
+
+    let totalExpected = 0;
+
+    let totalOvertime = 0;
+
+    let totalLate = 0;
+
+    let totalShortage = 0;
+
+    records.forEach(record=>{
+
+        totalWorked +=
+
+        Number(record.totalWorkingMinutes);
+
+        totalExpected +=
+
+        Number(record.expectedWorkingMinutes);
+
+        totalOvertime +=
+
+        Number(record.overtimeMinutes);
+
+        totalLate +=
+
+        Number(record.lateMinutes);
+
+        totalShortage +=
+
+        Number(record.shortageMinutes);
+
+    });
+
+    return{
+
+        workedHours:
+
+        (totalWorked/60).toFixed(2),
+
+        expectedHours:
+
+        (totalExpected/60).toFixed(2),
+
+        overtimeHours:
+
+        (totalOvertime/60).toFixed(2),
+
+        lateMinutes:
+
+        totalLate,
+
+        shortageMinutes:
+
+        totalShortage
+
+    };
+
+}
+
+async function downloadAttendancePDF(){
+
+    const { jsPDF } = window.jspdf;
+
+    const pdf = new jsPDF("landscape");
+
+    const rows = [];
+
+    filteredAttendanceReports.forEach(record=>{
+
+        rows.push([
+
+            record.employeeID,
+
+            record.guardName,
+
+            record.department,
+
+            record.siteName,
+
+            record.assignedShift,
+
+            record.attendanceStatus,
+
+            record.totalWorkingHours,
+
+            record.expectedWorkingHours,
+
+            record.overtimeMinutes,
+
+            record.lateMinutes,
+
+            record.attendancePercentage+"%"
+
+        ]);
+
+    });
+
+    pdf.setFontSize(18);
+
+    pdf.text(
+
+        "NEWLOOK SECURITY SYSTEM",
+
+        14,
+
+        18
+
+    );
+
+    pdf.setFontSize(13);
+
+    pdf.text(
+
+        "Attendance Report",
+
+        14,
+
+        28
+
+    );
+
+    pdf.autoTable({
+
+        startY:40,
+
+        head:[[
+
+            "Employee",
+
+            "Name",
+
+            "Department",
+
+            "Site",
+
+            "Shift",
+
+            "Status",
+
+            "Worked",
+
+            "Expected",
+
+            "Overtime",
+
+            "Late",
+
+            "%"
+
+        ]],
+
+        body:rows
+
+    });
+
+    pdf.save(
+
+        "Attendance_Report.pdf"
+
+    );
+
+}
+
+attendancePdfBtn.onclick = ()=>{
+
+    downloadAttendancePDF();
+
+};
+
+function downloadAttendanceExcel(){
+
+    const data = filteredAttendanceReports.map(record=>({
+
+        EmployeeID: record.employeeID,
+
+        Name: record.guardName,
+
+        Department: record.department,
+
+        Site: record.siteName,
+
+        Shift: record.assignedShift,
+
+        Status: record.attendanceStatus,
+
+        WorkedHours: record.totalWorkingHours,
+
+        ExpectedHours: record.expectedWorkingHours,
+
+        AttendancePercentage: record.attendancePercentage,
+
+        OvertimeMinutes: record.overtimeMinutes,
+
+        LateMinutes: record.lateMinutes,
+
+        ShortageMinutes: record.shortageMinutes
+
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        worksheet,
+
+        "Attendance"
+
+    );
+
+    XLSX.writeFile(
+
+        workbook,
+
+        "Attendance_Report.xlsx"
+
+    );
+
+}
+
+attendanceExcelBtn.onclick = ()=>{
+
+    downloadAttendanceExcel();
+
+};
+
+//====================================================
+// LOAD ATTENDANCE FILTERS
+//====================================================
+
+async function loadAttendanceFilters(){
+
+    const employeeSet = new Set();
+    const departmentSet = new Set();
+    const siteSet = new Set();
+    const shiftSet = new Set();
+
+    attendanceReports.forEach(record=>{
+
+        if(record.employeeID){
+
+            employeeSet.add(
+                JSON.stringify({
+                    id:record.employeeID,
+                    name:record.guardName
+                })
+            );
+
+        }
+
+        if(record.department){
+
+            departmentSet.add(record.department);
+
+        }
+
+        if(record.siteId){
+
+            siteSet.add(
+                JSON.stringify({
+                    id:record.siteId,
+                    name:record.siteName
+                })
+            );
+
+        }
+
+        if(record.assignedShift){
+
+            shiftSet.add(record.assignedShift);
+
+        }
+
+    });
+
+    attendanceEmployee.innerHTML =
+    `<option value="all">All Employees</option>`;
+
+    attendanceDepartment.innerHTML =
+    `<option value="all">All Departments</option>`;
+
+    attendanceSite.innerHTML =
+    `<option value="all">All Sites</option>`;
+
+    attendanceShift.innerHTML =
+    `<option value="all">All Shifts</option>`;
+
+    [...employeeSet].forEach(item=>{
+
+        const employee = JSON.parse(item);
+
+        attendanceEmployee.innerHTML += `
+            <option value="${employee.id}">
+                ${employee.name}
+            </option>
+        `;
+
+    });
+
+    [...departmentSet].sort().forEach(department=>{
+
+        attendanceDepartment.innerHTML += `
+            <option value="${department}">
+                ${department}
+            </option>
+        `;
+
+    });
+
+    [...siteSet].forEach(item=>{
+
+        const site = JSON.parse(item);
+
+        attendanceSite.innerHTML += `
+            <option value="${site.id}">
+                ${site.name}
+            </option>
+        `;
+
+    });
+
+    [...shiftSet].sort().forEach(shift=>{
+
+        attendanceShift.innerHTML += `
+            <option value="${shift}">
+                ${shift}
+            </option>
+        `;
+
+    });
+
+}

@@ -10,14 +10,38 @@ import {
 
     collection,
     getDocs,
+    getDoc,
     addDoc,
-    updateDoc,
     doc,
     query,
     where,
     serverTimestamp
 
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+//====================================================
+// SPEAK MESSAGE
+//====================================================
+
+function speakMessage(message){
+
+    if(!("speechSynthesis" in window)){
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const speech = new SpeechSynthesisUtterance(message);
+
+    speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
+    speech.volume = 1;
+
+    window.speechSynthesis.speak(speech);
+
+}
+
 
 
 //====================================================
@@ -26,9 +50,6 @@ import {
 
 const video =
 document.getElementById("attendanceVideo");
-
-const canvas =
-document.getElementById("attendanceCanvas");
 
 const statusBox =
 document.getElementById("attendanceStatus");
@@ -48,11 +69,9 @@ document.getElementById("siteDisplay");
 const statusDisplay =
 document.getElementById("statusDisplay");
 
-const liveTime =
-document.getElementById("liveTime");
+const liveTime = document.getElementById("currentTime");
 
-const liveDate =
-document.getElementById("liveDate");
+const liveDate = document.getElementById("currentDate");
 
 
 //====================================================
@@ -60,8 +79,6 @@ document.getElementById("liveDate");
 //====================================================
 
 let bodyModel;
-
-let currentStream = null;
 
 let modelsLoaded = false;
 
@@ -72,7 +89,8 @@ let processing = false;
 let attendanceStream = null;
 let cameraStarting = false;
 
-
+let verificationLocked = false;
+let lastEmployeeID = null;
 //====================================================
 // LIVE CLOCK
 //====================================================
@@ -158,161 +176,108 @@ async function loadBodyModel(){
 // START CAMERA SAFELY
 //====================================================
 
-async function startCamera(){
+//====================================================
+// START CAMERA
+//====================================================
 
+async function startCamera(){
 
     try{
 
-
         if(cameraStarting){
-
-            console.log(
-                "Camera already starting"
-            );
-
+            console.log("Camera already starting");
             return;
-
         }
-
 
         cameraStarting = true;
 
-
-
-        // Stop previous camera first
-
+        // Stop previous camera
         if(attendanceStream){
 
-            attendanceStream
-            .getTracks()
-            .forEach(track=>{
-
+            attendanceStream.getTracks().forEach(track=>{
                 track.stop();
-
             });
 
-
-            attendanceStream=null;
-
+            attendanceStream = null;
         }
-
-
 
         const devices =
-        await navigator.mediaDevices
-        .enumerateDevices();
-
-
+        await navigator.mediaDevices.enumerateDevices();
 
         const cameras =
-        devices.filter(
-            d=>d.kind==="videoinput"
-        );
+        devices.filter(device => device.kind === "videoinput");
 
-
-
-        if(cameras.length===0){
-
-            throw new Error(
-                "No camera found"
-            );
-
+        if(cameras.length === 0){
+            throw new Error("No camera found");
         }
 
-
-
         attendanceStream =
-        await navigator.mediaDevices
-        .getUserMedia({
+        await navigator.mediaDevices.getUserMedia({
 
             video:{
-
                 facingMode:"user",
-
-                width:{
-                    ideal:1280
-                },
-
-                height:{
-                    ideal:720
-                }
-
+                width:{ ideal:1280 },
+                height:{ ideal:720 }
             },
 
             audio:false
 
         });
 
-
-
-        attendanceVideo.srcObject =
-        attendanceStream;
-
-
+        // USE THE VIDEO VARIABLE
+        video.srcObject = attendanceStream;
 
         await new Promise(resolve=>{
 
+            video.onloadedmetadata = async()=>{
 
-            attendanceVideo.onloadedmetadata =
-            async()=>{
-
-
-                await attendanceVideo.play();
-
+                await video.play();
 
                 resolve();
 
-
             };
-
 
         });
 
-
-
         console.log(
             "Camera started:",
-            attendanceVideo.videoWidth,
-            attendanceVideo.videoHeight
+            video.videoWidth,
+            video.videoHeight
         );
-
-
 
     }
 
     catch(error){
 
-
-        console.error(
-            "Camera error:",
-            error
-        );
-
+        console.error("Camera error:",error);
 
         if(error.name==="NotReadableError"){
-
 
             setStatus(
                 "Camera busy. Close other apps using camera.",
                 "error"
             );
 
+        }else{
+
+            setStatus(
+                "Unable to access camera.",
+                "error"
+            );
 
         }
-
 
     }
 
     finally{
 
-
-        cameraStarting=false;
-
+        cameraStarting = false;
 
     }
 
-
 }
+
+
 
 //====================================================
 // STOP CAMERA WHEN PAGE CLOSES
@@ -362,6 +327,9 @@ async function initializeAttendance(){
 
         setStatus("Waiting for body...");
 
+        console.log("Starting body detection...");
+        detectBody();
+
         console.log("Attendance ready.");
 
     }
@@ -386,7 +354,12 @@ initializeAttendance();
 
 async function detectBody(){
 
-    if(!modelsLoaded) return;
+    console.log("detectBody running");
+
+    if(!modelsLoaded){
+        console.log("Models not loaded");
+        return;
+    }
 
     if(video.readyState !== 4){
 
@@ -399,6 +372,7 @@ async function detectBody(){
 
         const predictions =
         await bodyModel.detect(video);
+        console.log("Predictions:", predictions);
 
         const personFound =
         predictions.some(item => item.class === "person");
@@ -436,6 +410,10 @@ async function detectBody(){
 
                 processing = false;
 
+                verificationLocked = false;
+
+                lastEmployeeID = null;
+
                 clearDisplay();
 
                 setStatus(
@@ -444,11 +422,15 @@ async function detectBody(){
 
                 console.log("No person.");
 
-            }
+             }
+
+            
 
         }
 
     }
+
+    
 
     catch(error){
 
@@ -456,10 +438,10 @@ async function detectBody(){
 
     }
 
-    requestAnimationFrame(detectBody);
+    setTimeout(detectBody,300);
 
 }
-detectBody();
+
 //====================================================
 // CLEAR SCREEN
 //====================================================
@@ -486,7 +468,16 @@ function clearDisplay(){
 
 async function verifyFace(){
 
+
+
     try{
+
+    if(verificationLocked){
+
+    processing = false;
+    return;
+
+ }
 
         if(!bodyDetected) {
 
@@ -554,6 +545,16 @@ async function verifyFace(){
                 employee
             );
 
+            if(lastEmployeeID === employee.employeeID){
+
+            processing = false;
+            return;
+
+            }
+
+           verificationLocked = true;
+           lastEmployeeID = employee.employeeID;
+
 
             employeeDisplay.textContent =
             employee.employeeID;
@@ -572,8 +573,7 @@ async function verifyFace(){
 
 
 
-            if(employee.department !== "Staff"){
-
+            if(employee.department?.trim().toLowerCase() !== "staff"){
                 setStatus(
                     "Access denied. Staff only.",
                     "error"
@@ -592,6 +592,7 @@ async function verifyFace(){
                 "success"
             );
 
+          
 
             await checkLocation(employee);
 
@@ -911,7 +912,7 @@ async function checkLocation(employee){
 
 
 
-        await saveAttendanceEvent(
+        await verifyDepartment(
 
             employee
 
@@ -939,9 +940,74 @@ async function checkLocation(employee){
 
 }
 
+//====================================================
+// VERIFY STAFF DEPARTMENT
+//====================================================
+
+async function verifyDepartment(employee){
+
+    if(!employee.department){
+
+        setStatus(
+
+            "Department not assigned",
+
+            "error"
+
+        );
+
+        processing = false;
+
+        return;
+
+    }
+
+    const department =
+
+    employee.department
+    .trim()
+    .toLowerCase();
+
+    if(department !== "staff"){
+
+        setStatus(
+
+            "Only Staff can use Attendance",
+
+            "error"
+
+        );
+
+        processing = false;
+
+        return;
+
+    }
+
+    console.log(
+
+        "Department Verified"
+
+    );
+
+    setStatus(
+
+        "Department verified",
+
+        "success"
+
+    );
+
+    await saveAttendanceEvent(
+
+        employee
+
+    );
+
+}
+
 // --------------------------------------ATTENDANCE LOGIC--------------------------------------------------------
 
-let lastAttendanceAction = null;
 
 let todayAttendance = [];
 
@@ -1039,6 +1105,7 @@ function getNextAction(records){
 
 async function saveAttendanceEvent(employee){
 
+    await checkForNewDay(employee);
 
     const records =
     await loadTodayAttendance(
@@ -1081,6 +1148,9 @@ async function saveAttendanceEvent(employee){
             department:
             employee.department,
 
+            role:
+            employee.role || "",
+
 
             siteId:
             employee.siteId,
@@ -1094,6 +1164,13 @@ async function saveAttendanceEvent(employee){
 
 
             action,
+
+            status:
+            action==="IN"
+            ?
+            "ON DUTY"
+            :
+            "OFF DUTY",
 
 
             date:
@@ -1124,7 +1201,10 @@ async function saveAttendanceEvent(employee){
             "Checked IN",
             "success"
         );
-
+      
+        speakMessage(
+        `Welcome ${employee.fullName}. Thank you. You have successfully checked in.`
+     );
 
     }
 
@@ -1140,6 +1220,10 @@ async function saveAttendanceEvent(employee){
             "success"
         );
 
+        speakMessage(
+        `Goodbye ${employee.fullName}. Thank you. You have successfully checked out.`
+     );
+
 
     }
 
@@ -1152,7 +1236,7 @@ async function saveAttendanceEvent(employee){
     .textContent =
     records.length+1;
 
-
+  processing = false;
 
 }
 
@@ -1403,18 +1487,32 @@ function calculateAllWorkingPeriods(records){
 }
 
 async function createShiftRecord(
-employee,
-records
-){
+ employee,
+ records
+ ){
 
 
     const first =
     getFirstClockIn(records);
 
+    if(!first){
+
+    return;
+
+ }
+
     const shift =
     await getAssignedShift(
     employee.id
     );
+
+    if(!shift){
+
+    console.log("No shift assigned.");
+
+    return;
+
+ }
 
     let lateMinutes = 0;
 
@@ -1456,10 +1554,44 @@ records
 
 
     const work =
-    calculateWorkingHours(
-        first,
-        last
+    calculateAllWorkingPeriods(records);
+
+    const expected =
+    calculateExpectedHours(shift);
+
+    const comparison =
+    compareWorkingHours(
+    work.totalMinutes,
+    expected.minutes
+ );
+
+ //====================================================
+ // ATTENDANCE PERCENTAGE
+ //====================================================
+
+ let attendancePercentage = 0;
+
+ if(expected.minutes > 0){
+
+    attendancePercentage = Math.min(
+
+        100,
+
+        Number(
+
+            (
+
+                work.totalMinutes /
+
+                expected.minutes
+
+            ) * 100
+
+        ).toFixed(2)
+
     );
+
+ }
 
 
 
@@ -1473,19 +1605,19 @@ records
         {
 
             assignedShift:
-            shift.shiftType,
+            shift?.shiftType || "",
 
 
             scheduledStart:
-            shift.startTime,
+            shift?.startTime || "",
 
 
             scheduledEnd:
-            shift.endTime,
+            shift?.endTime || "",
 
 
             graceMinutes:
-            shift.graceMinutes,
+            shift?.graceMinutes ||"0",
 
 
             lateMinutes:
@@ -1496,6 +1628,12 @@ records
             attendanceStatus,
            recordDate:
            records[0].date,
+
+           firstClockIn:
+           first.timestamp,
+
+           lastClockOut:
+           last.timestamp,
 
 
             employeeID:
@@ -1553,11 +1691,26 @@ records
             shortageMinutes:
             comparison.shortageMinutes,
 
+            attendancePercentage:
+            attendancePercentage,
+
+            expectedHours:
+            expected.hours,
+
+            actualHours:
+            work.totalHours,
+
+            lunchTakenMinutes:0,
+
+            lunchExceededMinutes:0,
+
+        
+
 
             attendanceRecords:
             records,
 
-
+            payrollReady:true,
             createdAt:
             serverTimestamp()
 
@@ -1571,6 +1724,92 @@ records
         "Shift record created"
     );
 
+
+}
+
+//====================================================
+// CHECK IF NEW DAY STARTED
+//====================================================
+
+async function checkForNewDay(employee){
+
+    const yesterday =
+
+    new Date(
+        Date.now()-86400000
+    )
+    .toISOString()
+    .split("T")[0];
+
+
+
+    const exists =
+
+    await shiftRecordExists(
+
+        employee.employeeID,
+
+        yesterday
+
+    );
+
+
+
+    if(exists){
+
+        return;
+
+    }
+
+
+
+    const records =
+
+    await getPreviousDayAttendance(
+
+        employee.employeeID,
+
+        yesterday
+
+    );
+
+
+
+    if(records.length===0){
+
+        return;
+
+    }
+
+
+
+    await createShiftRecord(
+
+        employee,
+
+        records
+
+    );
+
+}
+async function shiftRecordExists(employeeID,date){
+
+    const q = query(
+
+        collection(db,"shiftRecords"),
+
+        where("employeeID","==",employeeID),
+
+        where("recordDate","==",date)
+
+    );
+
+
+
+    const snapshot =
+    await getDocs(q);
+
+    return !snapshot.empty;
 
 }
 
@@ -1626,9 +1865,15 @@ async function getAssignedShift(guardId){
 //====================================================
 
 function calculateLateMinutes(
-clockIn,
-shift
-){
+ clockIn,
+ shift
+ ){
+
+    if(!shift){
+
+    return 0;
+
+ }
 
 
     const actual =
@@ -1699,8 +1944,7 @@ shift
     }
 
 
-    return 
-    `Late by ${lateMinutes} minutes`;
+    return `Late by ${lateMinutes} minutes`;
 
 }
 
@@ -1709,6 +1953,18 @@ shift
 //====================================================
 
 function calculateExpectedHours(shift){
+
+    if(!shift){
+
+    return{
+
+        minutes:0,
+
+        hours:"0.00"
+
+    };
+
+ }
 
 
     const start =
@@ -1841,3 +2097,6 @@ expectedMinutes
 
 
 }
+
+
+

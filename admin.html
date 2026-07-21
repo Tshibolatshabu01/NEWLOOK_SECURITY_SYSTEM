@@ -694,7 +694,269 @@
 
         <section id="attendance" class="page">
 
-            <h3>Attendance</h3>
+            <div class="attendance-report-filters">
+
+                <div class="attendance-summary">
+
+<div class="summary-card">
+
+<h4>Present</h4>
+
+<span id="totalPresentCard">0</span>
+
+</div>
+
+<div class="summary-card">
+
+<h4>Late</h4>
+
+<span id="totalLateCard">0</span>
+
+</div>
+
+<div class="summary-card">
+
+<h4>Overtime</h4>
+
+<span id="totalOvertimeCard">0</span>
+
+</div>
+
+<div class="summary-card">
+
+<h4>Completed</h4>
+
+<span id="completedShiftCard">0</span>
+
+</div>
+
+<div class="summary-card">
+
+<h4>Attendance %</h4>
+
+<span id="attendancePercentageCard">0%</span>
+
+</div>
+
+</div>
+
+    <input
+    type="date"
+    id="attendanceDate">
+
+    <select id="attendancePeriod">
+
+        <option value="daily">
+
+            Daily
+
+        </option>
+
+        <option value="weekly">
+
+            Weekly
+
+        </option>
+
+        <option value="monthly">
+
+            Monthly
+
+        </option>
+
+        <option value="yearly">
+
+            Yearly
+
+        </option>
+
+        <option value="custom">
+
+            Custom
+
+        </option>
+
+    </select>
+
+    <input
+    type="date"
+    id="attendanceFrom">
+
+    <input
+    type="date"
+    id="attendanceTo">
+
+    <select id="attendanceEmployee">
+
+        <option value="all">
+
+            All Employees
+
+        </option>
+
+    </select>
+
+    <select id="attendanceDepartment">
+
+        <option value="all">
+
+            All Departments
+
+        </option>
+
+    </select>
+
+    <select id="attendanceSite">
+
+        <option value="all">
+
+            All Sites
+
+        </option>
+
+    </select>
+
+    <select id="attendanceShift">
+
+        <option value="all">
+
+            All Shifts
+
+        </option>
+
+    </select>
+
+    <select id="attendanceStatus">
+
+        <option value="all">
+
+            All Status
+
+        </option>
+
+    </select>
+
+ </div>
+
+ <br><br>
+
+ <h2>Live Attendance</h2>
+
+<table id="liveAttendanceTable">
+
+    <thead>
+
+        <tr>
+
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Role</th>
+            <th>Site</th>
+            <th>Status</th>
+            <th>Last Activity</th>
+
+        </tr>
+
+    </thead>
+
+    <tbody id="attendanceTableBody">
+
+    </tbody>
+
+</table>
+
+<br><br>
+
+ <br><br>
+
+ <table id="attendanceReportTable">
+
+<thead>
+
+<tr>
+
+<th>Employee No</th>
+
+<th>Name</th>
+
+<th>Department</th>
+
+<th>Site</th>
+
+<th>Shift</th>
+
+<th>Status</th>
+
+<th>First IN</th>
+
+<th>Last OUT</th>
+
+<th>Late</th>
+
+<th>Worked</th>
+
+<th>Expected</th>
+
+<th>Overtime</th>
+
+<th>Attendance %</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody id="attendanceReportBody">
+
+</tbody>
+
+</table>
+
+<br><br>
+
+<div class="attendance-report-buttons">
+
+<button id="attendancePdfBtn">
+
+Download PDF
+
+</button>
+
+<button id="attendanceExcelBtn">
+
+Download Excel
+
+</button>
+
+</div>
+
+<br>
+
+
+
+
+<!-- MODAL -->
+
+<div id="attendanceDetailsModal" class="modal">
+
+    <div class="modal-content attendance-details">
+
+        <span
+        id="closeAttendanceDetails"
+        class="close">&times;</span>
+
+        <h2>Attendance Details</h2>
+
+        <div id="attendanceDetailsContent">
+
+        </div>
+
+    </div>
+
+</div>
+
 
         </section>
 
@@ -1416,6 +1678,7 @@
     </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <!-- QR CODE -->
  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- EXCEL -->
