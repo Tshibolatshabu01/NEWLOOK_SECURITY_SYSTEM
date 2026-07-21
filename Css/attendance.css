@@ -385,133 +385,150 @@ EMPLOYEE GRID
 
 
 /*=====================================================
-TABLET
-=====================================================*/
-
-@media(max-width:1024px){
-
-.employee-grid{
-
-    grid-template-columns:repeat(3,1fr);
-
-}
-
-.scanner-frame{
-
-    width:320px;
-
-    height:420px;
-
-}
-
-.live-clock h2{
-
-    font-size:28px;
-
-}
-
-}
-
-
-/*=====================================================
 MOBILE
 =====================================================*/
 
-@media(max-width:768px){
-
-.top-bar{
-
-    flex-direction:column;
-
-    gap:20px;
-
-    text-align:center;
-
-}
-
-.employee-grid{
-
-    grid-template-columns:1fr 1fr;
-
-}
-
-.status-panel{
-
-    width:97%;
-
-    padding:20px;
-
-}
-
-.status-header{
-
-    flex-direction:column;
-
-    gap:15px;
-
-    text-align:center;
-
-}
-
-.scanner-frame{
-
-    width:240px;
-
-    height:320px;
-
-}
-
-.logo h1{
-
-    font-size:30px;
-
-}
-
-.live-clock h2{
-
-    font-size:24px;
-
-}
-
-}
-
-
 /*=====================================================
-SMALL MOBILE
+PHONE & TABLET
+SAME LAYOUT - FIT SCREEN
 =====================================================*/
 
-@media(max-width:480px){
+@media (max-width:1024px){
 
-.employee-grid{
+    .top-bar{
+        padding:18px 20px;
+    }
 
-    grid-template-columns:1fr;
+    .logo h1{
+        font-size:28px;
+    }
+
+    .logo span{
+        font-size:13px;
+    }
+
+    .live-clock h2{
+        font-size:26px;
+    }
+
+    .live-clock p{
+        font-size:13px;
+    }
+
+    .scanner-frame{
+        width:300px;
+        height:380px;
+    }
+
+    .status-panel{
+        width:98%;
+        padding:18px;
+        bottom:15px;
+    }
+
+    .status-header h2{
+        font-size:22px;
+    }
+
+    #attendanceStatus{
+        padding:10px 18px;
+        font-size:13px;
+    }
+
+    /* KEEP 6 COLUMNS */
+    .employee-grid{
+        grid-template-columns:repeat(6,1fr);
+        gap:10px;
+    }
+
+    .info-card{
+        padding:12px;
+    }
+
+    .info-card label{
+        font-size:11px;
+    }
+
+    .info-card span{
+        font-size:14px;
+    }
 
 }
 
-.scanner-frame{
+@media (max-width:768px){
 
-    width:210px;
+    /* KEEP HEADER HORIZONTAL */
+    .top-bar{
+        flex-direction:row;
+        justify-content:space-between;
+        align-items:center;
+        padding:15px;
+    }
 
-    height:280px;
+    .logo h1{
+        font-size:22px;
+    }
 
-}
+    .logo span{
+        font-size:11px;
+    }
 
-.status-panel{
+    .live-clock{
+        text-align:right;
+    }
 
-    bottom:10px;
+    .live-clock h2{
+        font-size:20px;
+    }
 
-}
+    .live-clock p{
+        font-size:11px;
+    }
 
-.logo h1{
+    .scanner-frame{
+        width:220px;
+        height:280px;
+    }
 
-    font-size:24px;
+    .status-panel{
+        width:98%;
+        padding:12px;
+        bottom:10px;
+    }
 
-}
+    .status-header{
+        flex-direction:row;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:12px;
+    }
 
-.live-clock h2{
+    .status-header h2{
+        font-size:18px;
+    }
 
-    font-size:20px;
+    #attendanceStatus{
+        font-size:12px;
+        padding:8px 14px;
+    }
 
-}
+    /* KEEP 6 COLUMNS */
+    .employee-grid{
+        grid-template-columns:repeat(6,1fr);
+        gap:8px;
+    }
+
+    .info-card{
+        padding:10px;
+    }
+
+    .info-card label{
+        font-size:10px;
+        margin-bottom:4px;
+    }
+
+    .info-card span{
+        font-size:12px;
+    }
 
 }

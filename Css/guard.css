@@ -2593,36 +2593,6 @@ button{
    KEEP DESKTOP LAYOUT ON ALL DEVICES
 ========================================== */
 
-html,
-body{
-    min-width:1280px;
-    overflow-x:auto;
-}
-
-.container{
-    min-width:1280px;
-}
-
-.sidebar{
-    width:280px;
-    min-width:280px;
-}
-
-.main{
-    margin-left:280px;
-    width:calc(100% - 280px);
-    min-width:1000px;
-}
-
-header,
-.page,
-.table-container,
-.visitor-container,
-.incident-container,
-.panic-container{
-    min-width:100%;
-}
-
 
 
 
