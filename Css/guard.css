@@ -2589,109 +2589,38 @@ button{
 /* ==========================================
    MOBILE CAMERA OPTIMIZATION
 ========================================== */
+/* ==========================================
+   KEEP DESKTOP LAYOUT ON ALL DEVICES
+========================================== */
 
-
-@media(max-width:768px){
-
-
-    .visitor-container,
-    .incident-container,
-    .panic-container{
-
-
-        gap:15px;
-
-
-    }
-
-
-
-    video{
-
-
-        height:260px;
-
-
-    }
-
-
-
-    .page-header h2{
-
-
-        font-size:22px;
-
-
-    }
-
-
-
-    .action-card{
-
-
-        width:100%;
-
-
-    }
-
-
-
+html,
+body{
+    min-width:1280px;
+    overflow-x:auto;
 }
 
+.container{
+    min-width:1280px;
+}
 
+.sidebar{
+    width:280px;
+    min-width:280px;
+}
 
-@media(max-width:480px){
+.main{
+    margin-left:280px;
+    width:calc(100% - 280px);
+    min-width:1000px;
+}
 
-
-    .page-header{
-
-
-        padding:18px;
-
-
-    }
-
-
-
-    .page-header h2{
-
-
-        font-size:20px;
-
-
-    }
-
-
-
-    video{
-
-
-        height:210px;
-
-
-    }
-
-
-
-    button{
-
-
-        font-size:15px;
-
-
-    }
-
-
-
-    .menu li{
-
-
-        padding:12px 15px;
-
-
-    }
-
-
+header,
+.page,
+.table-container,
+.visitor-container,
+.incident-container,
+.panic-container{
+    min-width:100%;
 }
 
 
@@ -2701,7 +2630,6 @@ button{
 /* ==========================================
    PRINT / SECURITY CLEAN MODE
 ========================================== */
-
 
 @media print{
 
@@ -2728,6 +2656,8 @@ button{
 
 
 }
+
+
 
 
 
