@@ -1957,79 +1957,26 @@ hr{
 
 footer{
 
-
     margin-left:280px;
+    width:calc(100% - 280px);
 
-
-    background:
-
-    linear-gradient(
+    background:linear-gradient(
         135deg,
         #020617,
         #1e293b
     );
 
-
     color:white;
-
 
     text-align:center;
 
-
     padding:30px;
 
+    border-top:3px solid #22c55e;
 
-    border-top:
-
-    3px solid #22c55e;
-
-
-    box-shadow:
-
-    0 -10px 30px rgba(0,0,0,.25);
-
+    box-shadow:0 -10px 30px rgba(0,0,0,.25);
 
 }
-
-
-
-footer h3{
-
-
-    font-size:24px;
-
-    color:#38bdf8;
-
-    margin-bottom:10px;
-
-
-}
-
-
-
-footer p{
-
-
-    color:#cbd5e1;
-
-    font-size:14px;
-
-
-}
-
-
-
-footer .developer{
-
-
-    color:#22c55e;
-
-    font-weight:800;
-
-
-}
-
-
 
 
 /* ==========================================
@@ -2713,15 +2660,32 @@ strong{
         max-width:100%;
     }
 
+    /* KEEP CAMERA + FORM SIDE BY SIDE */
     .visitor-container,
     .incident-container,
     .panic-container{
-        grid-template-columns:300px 1fr;
+        display:grid;
+        grid-template-columns:260px 1fr;
+        gap:15px;
+        align-items:start;
+    }
+
+    .visitor-camera,
+    .incident-camera,
+    .panic-camera{
+        width:260px;
+    }
+
+    .visitor-form,
+    .incident-form,
+    .panic-form{
+        width:100%;
+        display:grid;
         gap:15px;
     }
 
     video{
-        height:240px;
+        height:220px;
     }
 
     #clockInBtn,
@@ -2790,14 +2754,46 @@ strong{
         font-size:13px;
     }
 
+    /* KEEP CAMERA + FORM SIDE BY SIDE */
     .visitor-container,
     .incident-container,
     .panic-container{
-        grid-template-columns:240px 1fr;
+        display:grid;
+        grid-template-columns:200px 1fr;
+        gap:12px;
+        align-items:start;
+    }
+
+    .visitor-camera,
+    .incident-camera,
+    .panic-camera{
+        width:200px;
+    }
+
+    .visitor-form,
+    .incident-form,
+    .panic-form{
+        width:100%;
+        display:grid;
+        gap:12px;
     }
 
     video{
-        height:190px;
+        height:180px;
+    }
+
+    input,
+    select,
+    textarea{
+        padding:10px;
+        font-size:13px;
+    }
+
+    .visitor-form button,
+    .incident-form button,
+    .panic-form button{
+        height:50px;
+        font-size:14px;
     }
 
     .table-container{
@@ -2807,4 +2803,42 @@ strong{
     table{
         min-width:650px;
     }
+}
+
+/* ------------------FOOTER----------------------------- */
+
+@media (max-width:1024px){
+
+    footer{
+        margin-left:200px;
+        width:calc(100% - 200px);
+        padding:20px;
+    }
+
+    footer h3{
+        font-size:22px;
+    }
+
+    footer p{
+        font-size:13px;
+    }
+
+}
+
+@media (max-width:768px){
+
+    footer{
+        margin-left:160px;
+        width:calc(100% - 160px);
+        padding:15px;
+    }
+
+    footer h3{
+        font-size:18px;
+    }
+
+    footer p{
+        font-size:12px;
+    }
+
 }
