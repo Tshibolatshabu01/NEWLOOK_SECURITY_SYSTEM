@@ -1711,9 +1711,11 @@ async function generateCheckpointQR(checkpointId) {
 
         text: checkpoint.checkpointCode,
 
-        width: 250,
+        width: 400,
 
-        height: 250
+        height: 400,
+
+         correctLevel:QRCode.CorrectLevel.H
 
     });
 

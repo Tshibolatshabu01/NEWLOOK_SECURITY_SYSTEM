@@ -1428,116 +1428,82 @@ let html5QrScanner = null;
 
 async function startQRScanner(guard){
 
-    document.getElementById("qrScannerContainer").style.display="block";
-
-    html5QrScanner = new Html5Qrcode("qr-reader");
-
-    await html5QrScanner.start(
-
-        {
-            facingMode:"environment"
-        },
-
-        {
-            fps:10,
-            qrbox:{
-                width:250,
-                height:250
-            }
-        },
-
-        async(decodedText)=>{
-
-           await html5QrScanner.stop();
-
-            html5QrScanner.clear();
-
-            html5QrScanner = null;
-
-            document.getElementById(
-                "qrScannerContainer"
-            ).style.display="none";
-
-            processCheckpointQR(
-                decodedText,
-                guard
-            );
-
-        }
-
-    );
-
-}
-
-const closeScannerBtn =
-document.getElementById("closeScannerBtn");
-
-closeScannerBtn.addEventListener("click",async()=>{
-
-    if(html5QrScanner){
-
-        await html5QrScanner.stop();
-
-        html5QrScanner.clear();
-
-        html5QrScanner = null;
-
-    }
-
-    document.getElementById(
-        "qrScannerContainer"
-    ).style.display="none";
-
-});
-
-async function processCheckpointQR(decodedText, guard){
-
     try{
 
-        const qr = JSON.parse(decodedText);
+        console.log("Opening QR Scanner...");
 
-        const checkpoint =
-            await getCheckpoint(
-                qr.checkpointId
-            );
+        document.getElementById("qrScannerContainer").style.display = "block";
 
-        if(!checkpoint){
+        html5QrScanner = new Html5Qrcode("qr-reader");
 
-            alert("Checkpoint not found.");
+        await html5QrScanner.start(
 
-            return;
+            {
+                facingMode:{
+                    exact:"environment"
+                }
+            },
 
-        }
+            {
 
-        if(checkpoint.siteId !== qr.siteId){
+                fps:15,
 
-            alert("Invalid checkpoint.");
+                qrbox:(viewfinderWidth,viewfinderHeight)=>{
 
-            return;
+                    const size=Math.min(viewfinderWidth,viewfinderHeight)*0.8;
 
-        }
+                    return{
 
-        if(checkpoint.checkpointName !== qr.checkpointName){
+                        width:size,
+                        height:size
 
-            alert("Checkpoint information does not match.");
+                    };
 
-            return;
+                },
 
-        }
+                aspectRatio:1,
 
-        if(checkpoint.location !== qr.location){
+                disableFlip:false
 
-            alert("Checkpoint location does not match.");
+            },
 
-            return;
+            async(decodedText)=>{
 
-        }
+                console.log("QR SCANNED:",decodedText);
 
-        alert(
+                try{
 
-            "Checkpoint verified.\n\n" +
+                    await html5QrScanner.stop();
+                    await html5QrScanner.clear();
 
-            checkpoint.checkpointName
+                }catch(e){
+
+                    console.log(e);
+
+                }
+
+                html5QrScanner=null;
+
+                document.getElementById("qrScannerContainer").style.display="none";
+
+                await processCheckpointQR(decodedText.trim(),guard);
+
+            },
+
+            (errorMessage)=>{
+
+                // Ignore normal scan failures while searching
+                if(
+                    errorMessage.includes("No MultiFormat Readers")
+                ){
+
+                    return;
+
+                }
+
+                console.log(errorMessage);
+
+            }
 
         );
 
@@ -1545,73 +1511,113 @@ async function processCheckpointQR(decodedText, guard){
 
     catch(error){
 
-        console.error(error);
+        console.error("Scanner failed:",error);
 
-        alert("Invalid QR Code.");
+        alert(error.message);
+
+    }
+
+}
+const closeScannerBtn =
+document.getElementById("closeScannerBtn");
+
+closeScannerBtn.addEventListener("click", async()=>{
+
+    try{
+
+        if(html5QrScanner){
+
+            await html5QrScanner.stop();
+
+            await html5QrScanner.clear();
+
+            html5QrScanner = null;
+
+        }
+
+    }catch(error){
+
+        console.log(error);
+
+    }
+
+    document.getElementById("qrScannerContainer").style.display = "none";
+
+});
+
+async function processCheckpointQR(qrCode, guard) {
+
+    console.log("QR:", qrCode);
+
+    const checkpoint = await getCheckpointByCode(qrCode);
+
+    if (!checkpoint) {
+
+        alert("Checkpoint not found.");
+
+        return;
 
     }
 
     const record = currentShiftRecord;
-const shift = currentShift;
+    const shift = currentShift;
 
-if (!record || !shift) {
+    if (!record || !shift) {
 
-    alert("Please Clock In first.");
+        alert("Please Clock In first.");
 
-    return;
+        return;
 
-}
+    }
 
- const patrol = await canScanCheckpoint(
-    guard,
-    checkpoint,
-    shift
-);
-
-if (!patrol.allowed) {
-
-    alert(
-        "Patrol not yet due.\n\n" +
-        "Next scan allowed in " +
-        patrol.remaining +
-        " minute(s)."
+    const patrol = await canScanCheckpoint(
+        guard,
+        checkpoint,
+        shift
     );
 
-    return;
+    if (!patrol.allowed) {
+
+        alert(
+            "Patrol not yet due.\n\nNext scan allowed in "
+            + patrol.remaining +
+            " minute(s)."
+        );
+
+        return;
+
+    }
+
+    await savePatrol(
+        guard,
+        checkpoint
+    );
+
+    await updatePatrolCount(
+        record,
+        checkpoint
+    );
+
+    record.patrolCount =
+        (record.patrolCount || 0) + 1;
+
+    alert(
+        "✅ Patrol Recorded\n\n" +
+        checkpoint.checkpointName +
+        "\n\nTotal Patrols: " +
+        record.patrolCount
+    );
 
 }
 
- await savePatrol(
-    guard,
-    checkpoint
- );
-
- await updatePatrolCount(
-    record,
-    checkpoint
- );
-
- alert(
-
-    "✅ Patrol Recorded\n\n" +
-
-    "Checkpoint: " +
-
-    checkpoint.checkpointName +
-
-    "\n\nTotal Patrols: " +
-
-    ((record.patrolCount || 0) + 1)
-
- );
-
-}
-
-async function getCheckpoint(checkpointId){
+async function getCheckpointByCode(checkpointCode) {
 
     const q = query(
+
         collection(db,"checkpoints"),
-        where("checkpointId","==",checkpointId)
+
+        where("checkpointCode","==",checkpointCode)
+
     );
 
     const snapshot = await getDocs(q);
@@ -1622,9 +1628,9 @@ async function getCheckpoint(checkpointId){
 
     }
 
-    return {
+    return{
 
-        id: snapshot.docs[0].id,
+        id:snapshot.docs[0].id,
 
         ...snapshot.docs[0].data()
 
@@ -1771,6 +1777,7 @@ async function canScanCheckpoint(
     };
 
 }
+
 
 // -----------------------------------VISITOR MANAGEMENT-------------------------------------------------------
 let visitorFacingMode = "environment";
