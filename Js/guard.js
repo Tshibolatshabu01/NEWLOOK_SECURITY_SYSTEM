@@ -721,8 +721,12 @@ clockInBtn.addEventListener("click", async () => {
 
         const success = await createShiftRecord(guard, shift);
 
-if(!success){
-    return;
+        if(!success){
+        return;
+
+        currentShift = shift;
+
+        updatePatrolStatus();
 }
 
 
@@ -1407,63 +1411,78 @@ lunchOutBtn.addEventListener("click", async()=>{
 });
 
 // ------------------------PATROL MANAGEMENT-------------------------------------------------------------
+// ======================================================
+// PATROL MANAGEMENT
+// QR SCANNER
+// ======================================================
+
 const patrolIntervalMessage =
 document.getElementById("patrolIntervalMessage");
 
-scanCheckpointBtn.addEventListener("click", async()=>{
+const scannerContainer =
+document.getElementById("qrScannerContainer");
+
+const qrReader =
+document.getElementById("qr-reader");
+
+const closeScannerBtn =
+document.getElementById("closeScannerBtn");
+
+let html5QrScanner = null;
+let scannerRunning = false;
+
+
+//--------------------------------------------------
+// OPEN SCANNER
+//--------------------------------------------------
+
+scanCheckpointBtn.addEventListener("click", async () => {
 
     const session = await verifyGuardOnDuty();
 
-    if(!session) return;
+    if (!session) return;
 
-    const {
-
-        guard
-
-    } = session;
-
-    startQRScanner(guard);
+    startQRScanner(session.guard);
 
 });
 
-let html5QrScanner = null;
+
+//--------------------------------------------------
+// START CAMERA
+//--------------------------------------------------
 
 async function startQRScanner(guard){
 
+    if(scannerRunning) return;
+
+    scannerRunning = true;
+
+    scannerContainer.style.display = "block";
+
+    qrReader.innerHTML = "";
+
+    html5QrScanner =
+    new Html5Qrcode("qr-reader");
+
     try{
-
-        console.log("Opening QR Scanner...");
-
-        document.getElementById("qrScannerContainer").style.display = "block";
-
-        html5QrScanner = new Html5Qrcode("qr-reader");
 
         await html5QrScanner.start(
 
             {
-                facingMode:{
-                    exact:"environment"
-                }
+
+                facingMode:"environment"
+
             },
 
             {
 
-                fps:15,
+                fps:10,
 
-                qrbox:(viewfinderWidth,viewfinderHeight)=>{
-
-                    const size=Math.min(viewfinderWidth,viewfinderHeight)*0.8;
-
-                    return{
-
-                        width:size,
-                        height:size
-
-                    };
-
-                },
+                qrbox:250,
 
                 aspectRatio:1,
+
+                rememberLastUsedCamera:true,
 
                 disableFlip:false
 
@@ -1471,41 +1490,21 @@ async function startQRScanner(guard){
 
             async(decodedText)=>{
 
-                console.log("QR SCANNED:",decodedText);
+                console.log("QR:",decodedText);
 
-                try{
+                await stopQRScanner();
 
-                    await html5QrScanner.stop();
-                    await html5QrScanner.clear();
+                processCheckpointQR(
 
-                }catch(e){
+                    decodedText.trim(),
 
-                    console.log(e);
+                    guard
 
-                }
-
-                html5QrScanner=null;
-
-                document.getElementById("qrScannerContainer").style.display="none";
-
-                await processCheckpointQR(decodedText.trim(),guard);
+                );
 
             },
 
-            (errorMessage)=>{
-
-                // Ignore normal scan failures while searching
-                if(
-                    errorMessage.includes("No MultiFormat Readers")
-                ){
-
-                    return;
-
-                }
-
-                console.log(errorMessage);
-
-            }
+            ()=>{}
 
         );
 
@@ -1513,17 +1512,28 @@ async function startQRScanner(guard){
 
     catch(error){
 
-        console.error("Scanner failed:",error);
+        console.error(error);
 
-        alert(error.message);
+        scannerRunning=false;
+
+        scannerContainer.style.display="none";
+
+        alert(
+
+            "Unable to start camera."
+
+        );
 
     }
 
 }
-const closeScannerBtn =
-document.getElementById("closeScannerBtn");
 
-closeScannerBtn.addEventListener("click", async()=>{
+
+//--------------------------------------------------
+// STOP CAMERA
+//--------------------------------------------------
+
+async function stopQRScanner(){
 
     try{
 
@@ -1533,119 +1543,227 @@ closeScannerBtn.addEventListener("click", async()=>{
 
             await html5QrScanner.clear();
 
-            html5QrScanner = null;
-
         }
 
-    }catch(error){
+    }
 
-        console.log(error);
+    catch(e){
+
+        console.log(e);
 
     }
 
-    document.getElementById("qrScannerContainer").style.display = "none";
+    html5QrScanner=null;
 
-});
+    scannerRunning=false;
 
-async function processCheckpointQR(qrCode, guard) {
-
-    console.log("QR:", qrCode);
-
-    const checkpoint = await getCheckpointByCode(qrCode);
-
-    if (!checkpoint) {
-
-        alert("Checkpoint not found.");
-
-        return;
-
-    }
-
-    const record = currentShiftRecord;
-    const shift = currentShift;
-
-    if (!record || !shift) {
-
-        alert("Please Clock In first.");
-
-        return;
-
-    }
-
-    const patrol = await canScanCheckpoint(
-        guard,
-        checkpoint,
-        shift
-    );
-
-    if (!patrol.allowed) {
-
-        patrolIntervalMessage.style.display = "block";
-
-        patrolIntervalMessage.className =
-        "warning";
-
-        patrolIntervalMessage.innerHTML =
-
-        "⏳ Patrol Interval Not Yet Due<br><br>" +
-
-        "Next patrol allowed in <b>" +
-
-        patrol.remaining +
-
-        " minute(s)</b>.";
-
-       return;
-
-    }
-
-    await savePatrol(
-        guard,
-        checkpoint
-    );
-
-    await updatePatrolCount(
-        record,
-        checkpoint
-    );
-
-    record.patrolCount =
-        (record.patrolCount || 0) + 1;
-
-    patrolIntervalMessage.style.display = "block";
-
-    patrolIntervalMessage.className =
-    "success";
-
-   patrolIntervalMessage.innerHTML =
-
-    "✅ Patrol Recorded Successfully<br><br>" +
-
-    "Checkpoint: <b>" +
-
-    checkpoint.checkpointName +
-
-    "</b><br><br>" +
-
-    "Total Patrols: <b>" +
-
-    record.patrolCount +
-
-    "</b>";
+    scannerContainer.style.display="none";
 
 }
 
-async function getCheckpointByCode(checkpointCode) {
 
-    const q = query(
+//--------------------------------------------------
+// CLOSE BUTTON
+//--------------------------------------------------
 
-        collection(db,"checkpoints"),
+closeScannerBtn.addEventListener(
 
-        where("checkpointCode","==",checkpointCode)
+    "click",
+
+    stopQRScanner
+
+);
+
+// ======================================================
+// PROCESS SCANNED QR
+// ======================================================
+
+async function processCheckpointQR(checkpointCode, guard){
+
+    console.log("Scanned QR:", checkpointCode);
+
+    patrolIntervalMessage.style.display = "none";
+
+    // Remove spaces/new lines
+    checkpointCode = checkpointCode.trim();
+
+    // --------------------------------------------------
+    // FIND CHECKPOINT
+    // --------------------------------------------------
+
+    const checkpoint = await getCheckpointByCode(checkpointCode);
+
+    if(!checkpoint){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="danger";
+
+        patrolIntervalMessage.innerHTML=`
+            ❌ Invalid Checkpoint QR
+        `;
+
+        return;
+
+    }
+
+    console.log("Checkpoint Found:",checkpoint);
+
+    // --------------------------------------------------
+    // MUST BE CLOCKED IN
+    // --------------------------------------------------
+
+    if(!currentShiftRecord){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="danger";
+
+        patrolIntervalMessage.innerHTML=`
+            ❌ Please Clock In First
+        `;
+
+        return;
+
+    }
+
+    if(!currentShift){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="danger";
+
+        patrolIntervalMessage.innerHTML=`
+            ❌ No Active Shift
+        `;
+
+        return;
+
+    }
+
+    // --------------------------------------------------
+    // VERIFY SITE
+    // --------------------------------------------------
+
+    if(checkpoint.siteId!==currentShift.siteId){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="danger";
+
+        patrolIntervalMessage.innerHTML=`
+            ❌ Wrong Site Checkpoint
+        `;
+
+        return;
+
+    }
+
+    // --------------------------------------------------
+    // CHECK PATROL INTERVAL
+    // --------------------------------------------------
+
+    const patrol=await canScanCheckpoint(
+
+        guard,
+
+        checkpoint,
+
+        currentShift
 
     );
 
-    const snapshot = await getDocs(q);
+    if(!patrol.allowed){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="warning";
+
+        patrolIntervalMessage.innerHTML=`
+            ⏳ Patrol Not Due Yet<br><br>
+            Next Patrol In
+            <b>${patrol.remaining}</b>
+            minute(s)
+        `;
+
+        return;
+
+    }
+
+    // --------------------------------------------------
+    // SAVE PATROL
+    // --------------------------------------------------
+
+    await savePatrol(
+
+        guard,
+
+        checkpoint
+
+    );
+
+    await updatePatrolCount(
+
+        currentShiftRecord,
+
+        checkpoint
+
+    );
+
+    currentShiftRecord.patrolCount =
+        (currentShiftRecord.patrolCount||0)+1;
+
+        currentShiftRecord.lastPatrolTime = {
+     toDate(){
+        return new Date();
+     }
+     };
+
+     updatePatrolStatus();
+
+    patrolIntervalMessage.style.display="block";
+
+    patrolIntervalMessage.className="success";
+
+    patrolIntervalMessage.innerHTML=`
+        ✅ Patrol Recorded<br><br>
+
+        Checkpoint:
+        <b>${checkpoint.checkpointName}</b><br><br>
+
+        Total Patrols:
+        <b>${currentShiftRecord.patrolCount}</b>
+    `;
+
+}
+
+
+
+// ======================================================
+// GET CHECKPOINT
+// ======================================================
+
+async function getCheckpointByCode(code){
+
+    const snapshot=await getDocs(
+
+        query(
+
+            collection(db,"checkpoints"),
+
+            where(
+
+                "checkpointCode",
+
+                "==",
+
+                code
+
+            )
+
+        )
+
+    );
 
     if(snapshot.empty){
 
@@ -1663,12 +1781,15 @@ async function getCheckpointByCode(checkpointCode) {
 
 }
 
+// ======================================================
+// SAVE PATROL
+// ======================================================
+
 async function savePatrol(guard, checkpoint){
 
     const position = await getCurrentPosition();
 
-    const patrolRef =
-        doc(collection(db,"patrols"));
+    const patrolRef = doc(collection(db,"patrols"));
 
     await setDoc(patrolRef,{
 
@@ -1680,15 +1801,17 @@ async function savePatrol(guard, checkpoint){
 
         guardName: guard.fullName,
 
-        siteId: checkpoint.siteId,
+        siteId: currentShift.siteId,
 
-        siteName: checkpoint.siteName,
+        siteName: currentShift.siteName,
+
+        shiftId: currentShift.shiftId,
 
         checkpointId: checkpoint.checkpointId,
 
-        checkpointName: checkpoint.checkpointName,
+        checkpointCode: checkpoint.checkpointCode,
 
-        location: checkpoint.location,
+        checkpointName: checkpoint.checkpointName,
 
         latitude: position.coords.latitude,
 
@@ -1702,7 +1825,15 @@ async function savePatrol(guard, checkpoint){
 
 }
 
+
+
+// ======================================================
+// UPDATE SHIFT RECORD
+// ======================================================
+
 async function updatePatrolCount(record, checkpoint){
+
+    const total = (record.patrolCount || 0) + 1;
 
     await updateDoc(
 
@@ -1710,14 +1841,13 @@ async function updatePatrolCount(record, checkpoint){
 
         {
 
-            patrolCount:
-                (record.patrolCount || 0) + 1,
+            patrolCount: total,
 
-            lastCheckpoint:
-                checkpoint.checkpointName,
+            lastCheckpoint: checkpoint.checkpointName,
 
-            lastPatrolTime:
-                serverTimestamp()
+            lastCheckpointCode: checkpoint.checkpointCode,
+
+            lastPatrolTime: serverTimestamp()
 
         }
 
@@ -1725,23 +1855,31 @@ async function updatePatrolCount(record, checkpoint){
 
 }
 
+
+
+// ======================================================
+// GET LAST PATROL
+// ======================================================
+
 async function getLastPatrol(guardId, checkpointId){
 
-    const q = query(
+    const snapshot = await getDocs(
 
-        collection(db,"patrols"),
+        query(
 
-        where("guardId","==",guardId),
+            collection(db,"patrols"),
 
-        where("checkpointId","==",checkpointId),
+            where("guardId","==",guardId),
 
-        orderBy("scanTime","desc"),
+            where("checkpointId","==",checkpointId),
 
-        limit(1)
+            orderBy("scanTime","desc"),
+
+            limit(1)
+
+        )
 
     );
-
-    const snapshot = await getDocs(q);
 
     if(snapshot.empty){
 
@@ -1753,41 +1891,66 @@ async function getLastPatrol(guardId, checkpointId){
 
 }
 
+
+
+// ======================================================
+// CHECK PATROL INTERVAL
+// ======================================================
+
 async function canScanCheckpoint(
+
     guard,
+
     checkpoint,
+
     shift
+
 ){
 
-    const lastPatrol =
-        await getLastPatrol(
-            guard.guardId,
-            checkpoint.checkpointId
-        );
+    const lastPatrol = await getLastPatrol(
+
+        guard.guardId,
+
+        checkpoint.checkpointId
+
+    );
 
     if(!lastPatrol){
 
-        return {
-            allowed:true
+        return{
+
+            allowed:true,
+
+            remaining:0
+
         };
 
     }
 
-    const last =
-        lastPatrol.scanTime.toDate();
+    const interval = Number(
 
-    const interval =
-        Number(shift.patrolInterval);
+        shift.patrolInterval || 60
 
-    const elapsed =
-        Math.floor(
-            (Date.now()-last.getTime())/60000
-        );
+    );
+
+    const lastTime =
+
+        lastPatrol.scanTime.toDate().getTime();
+
+    const elapsed = Math.floor(
+
+        (Date.now() - lastTime) / 60000
+
+    );
 
     if(elapsed >= interval){
 
-        return {
-            allowed:true
+        return{
+
+            allowed:true,
+
+            remaining:0
+
         };
 
     }
@@ -1796,14 +1959,117 @@ async function canScanCheckpoint(
 
         allowed:false,
 
-        remaining:
-            interval-elapsed
+        remaining: interval - elapsed
 
     };
 
 }
 
+// ======================================================
+// LIVE PATROL STATUS
+// ======================================================
 
+setInterval(updatePatrolStatus,60000);
+
+async function updatePatrolStatus(){
+
+    if(!currentShift) return;
+
+    if(!currentShiftRecord) return;
+
+    if(!currentShiftRecord.lastPatrolTime){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="status-message warning";
+
+        patrolIntervalMessage.innerHTML=`
+
+            ⏳ First Patrol Pending
+
+        `;
+
+        return;
+
+    }
+
+    const interval=
+
+        Number(currentShift.patrolInterval);
+
+    const last=
+
+        currentShiftRecord.lastPatrolTime.toDate();
+
+    const elapsed=
+
+        Math.floor(
+
+            (Date.now()-last.getTime())/60000
+
+        );
+
+    if(elapsed<interval){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="status-message success";
+
+        patrolIntervalMessage.innerHTML=`
+
+            ✅ Patrol On Schedule
+
+            <br><br>
+
+            Next Patrol In
+
+            <b>${interval-elapsed}</b>
+
+            minute(s)
+
+        `;
+
+    }
+
+    else if(elapsed===interval){
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="status-message warning";
+
+        patrolIntervalMessage.innerHTML=`
+
+            ⏰ Patrol Due
+
+            <br><br>
+
+            Scan Next Checkpoint
+
+        `;
+
+    }
+
+    else{
+
+        patrolIntervalMessage.style.display="block";
+
+        patrolIntervalMessage.className="status-message danger";
+
+        patrolIntervalMessage.innerHTML=`
+
+            🚨 Patrol Overdue
+
+            <br><br>
+
+            ${elapsed-interval}
+
+            minute(s) late
+
+        `;
+
+    }
+
+}
 // -----------------------------------VISITOR MANAGEMENT-------------------------------------------------------
 let visitorFacingMode = "environment";
 const visitorVideo =
