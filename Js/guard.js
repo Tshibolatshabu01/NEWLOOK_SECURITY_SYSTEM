@@ -1407,6 +1407,8 @@ lunchOutBtn.addEventListener("click", async()=>{
 });
 
 // ------------------------PATROL MANAGEMENT-------------------------------------------------------------
+const patrolIntervalMessage =
+document.getElementById("patrolIntervalMessage");
 
 scanCheckpointBtn.addEventListener("click", async()=>{
 
@@ -1578,13 +1580,22 @@ async function processCheckpointQR(qrCode, guard) {
 
     if (!patrol.allowed) {
 
-        alert(
-            "Patrol not yet due.\n\nNext scan allowed in "
-            + patrol.remaining +
-            " minute(s)."
-        );
+        patrolIntervalMessage.style.display = "block";
 
-        return;
+        patrolIntervalMessage.className =
+        "warning";
+
+        patrolIntervalMessage.innerHTML =
+
+        "⏳ Patrol Interval Not Yet Due<br><br>" +
+
+        "Next patrol allowed in <b>" +
+
+        patrol.remaining +
+
+        " minute(s)</b>.";
+
+       return;
 
     }
 
@@ -1601,12 +1612,26 @@ async function processCheckpointQR(qrCode, guard) {
     record.patrolCount =
         (record.patrolCount || 0) + 1;
 
-    alert(
-        "✅ Patrol Recorded\n\n" +
-        checkpoint.checkpointName +
-        "\n\nTotal Patrols: " +
-        record.patrolCount
-    );
+    patrolIntervalMessage.style.display = "block";
+
+    patrolIntervalMessage.className =
+    "success";
+
+   patrolIntervalMessage.innerHTML =
+
+    "✅ Patrol Recorded Successfully<br><br>" +
+
+    "Checkpoint: <b>" +
+
+    checkpoint.checkpointName +
+
+    "</b><br><br>" +
+
+    "Total Patrols: <b>" +
+
+    record.patrolCount +
+
+    "</b>";
 
 }
 
