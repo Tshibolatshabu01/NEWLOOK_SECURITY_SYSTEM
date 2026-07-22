@@ -724,10 +724,13 @@ clockInBtn.addEventListener("click", async () => {
         if(!success){
         return;
 
-        currentShift = shift;
+        currentShiftRecord =
+        await getTodayShiftRecord(
+        guard.guardId
+      );
 
-        updatePatrolStatus();
-}
+      updatePatrolStatus();
+}   
 
 
 
@@ -1125,6 +1128,28 @@ async function createShiftRecord(guard, shift){
 
         });
 
+         currentShift = shift;
+
+     currentShiftRecord = {
+
+     id: recordRef.id,
+
+     recordId: recordRef.id,
+
+     guardId: guard.guardId,
+
+     shiftId: shift.shiftId,
+
+     patrolInterval: Number(shift.patrolInterval || 60),
+
+     patrolCount: 0,
+
+     lastCheckpoint: "",
+
+     lastPatrolTime: null
+
+     };
+
         console.log("Shift Record Created Successfully");
 
         return true;
@@ -1138,6 +1163,8 @@ async function createShiftRecord(guard, shift){
         return false;
 
     }
+
+   
    
 
 }
@@ -1710,14 +1737,11 @@ async function processCheckpointQR(checkpointCode, guard){
 
     );
 
-    currentShiftRecord.patrolCount =
-        (currentShiftRecord.patrolCount||0)+1;
 
-        currentShiftRecord.lastPatrolTime = {
-     toDate(){
-        return new Date();
-     }
-     };
+    currentShiftRecord =
+    await getTodayShiftRecord(currentGuard.guardId);
+
+     
 
      updatePatrolStatus();
 
@@ -1796,29 +1820,22 @@ async function savePatrol(guard, checkpoint){
         patrolId: patrolRef.id,
 
         guardId: guard.guardId,
-
         employeeID: guard.employeeID,
-
         guardName: guard.fullName,
 
         siteId: currentShift.siteId,
-
         siteName: currentShift.siteName,
 
         shiftId: currentShift.shiftId,
 
         checkpointId: checkpoint.checkpointId,
-
         checkpointCode: checkpoint.checkpointCode,
-
         checkpointName: checkpoint.checkpointName,
 
         latitude: position.coords.latitude,
-
         longitude: position.coords.longitude,
 
         scanTime: serverTimestamp(),
-
         createdAt: serverTimestamp()
 
     });
@@ -1833,15 +1850,13 @@ async function savePatrol(guard, checkpoint){
 
 async function updatePatrolCount(record, checkpoint){
 
-    const total = (record.patrolCount || 0) + 1;
-
     await updateDoc(
 
         doc(db,"shiftRecords",record.id),
 
         {
 
-            patrolCount: total,
+            patrolCount: increment(1),
 
             lastCheckpoint: checkpoint.checkpointName,
 
@@ -1851,6 +1866,10 @@ async function updatePatrolCount(record, checkpoint){
 
         }
 
+    );
+
+    currentShiftRecord = await getTodayShiftRecord(
+        currentGuard.guardId
     );
 
 }
@@ -1969,13 +1988,30 @@ async function canScanCheckpoint(
 // LIVE PATROL STATUS
 // ======================================================
 
-setInterval(updatePatrolStatus,60000);
+setInterval(async()=>{
+
+    if(currentGuard){
+
+        currentShiftRecord =
+        await getTodayShiftRecord(
+            currentGuard.guardId
+        );
+
+        updatePatrolStatus();
+
+    }
+
+},60000);
 
 async function updatePatrolStatus(){
 
-    if(!currentShift) return;
+    if(!currentShiftRecord){
 
-    if(!currentShiftRecord) return;
+        patrolIntervalMessage.style.display="none";
+
+        return;
+
+    }
 
     if(!currentShiftRecord.lastPatrolTime){
 
@@ -1993,27 +2029,23 @@ async function updatePatrolStatus(){
 
     }
 
-    const interval=
+    const interval =
+    Number(currentShiftRecord.patrolInterval || 60);
 
-        Number(currentShift.patrolInterval);
+    const last =
+    currentShiftRecord.lastPatrolTime.toDate();
 
-    const last=
+    const elapsed =
+    Math.floor(
 
-        currentShiftRecord.lastPatrolTime.toDate();
+        (Date.now()-last.getTime())/60000
 
-    const elapsed=
+    );
 
-        Math.floor(
+    if(elapsed < interval){
 
-            (Date.now()-last.getTime())/60000
-
-        );
-
-    if(elapsed<interval){
-
-        patrolIntervalMessage.style.display="block";
-
-        patrolIntervalMessage.className="status-message success";
+        patrolIntervalMessage.className=
+        "status-message success";
 
         patrolIntervalMessage.innerHTML=`
 
@@ -2031,11 +2063,10 @@ async function updatePatrolStatus(){
 
     }
 
-    else if(elapsed===interval){
+    else if(elapsed >= interval){
 
-        patrolIntervalMessage.style.display="block";
-
-        patrolIntervalMessage.className="status-message warning";
+        patrolIntervalMessage.className=
+        "status-message warning";
 
         patrolIntervalMessage.innerHTML=`
 
@@ -2044,26 +2075,6 @@ async function updatePatrolStatus(){
             <br><br>
 
             Scan Next Checkpoint
-
-        `;
-
-    }
-
-    else{
-
-        patrolIntervalMessage.style.display="block";
-
-        patrolIntervalMessage.className="status-message danger";
-
-        patrolIntervalMessage.innerHTML=`
-
-            🚨 Patrol Overdue
-
-            <br><br>
-
-            ${elapsed-interval}
-
-            minute(s) late
 
         `;
 
