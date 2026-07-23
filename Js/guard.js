@@ -1908,38 +1908,22 @@ function stopVisitorCamera(){
        visitorPreview.removeAttribute("src");
 }
 
-captureVisitorPhoto.addEventListener("click",()=>{
+captureVisitorPhoto.addEventListener("click", () => {
 
-    visitorCanvas.width =
-        visitorVideo.videoWidth;
+    visitorCanvas.width = visitorVideo.videoWidth;
+    visitorCanvas.height = visitorVideo.videoHeight;
 
-    visitorCanvas.height =
-        visitorVideo.videoHeight;
+    const ctx = visitorCanvas.getContext("2d");
 
-    const ctx =
-        visitorCanvas.getContext("2d");
+    ctx.drawImage(visitorVideo, 0, 0);
 
-    ctx.drawImage(
+    visitorPhotoBase64 = visitorCanvas.toDataURL("image/jpeg", 0.8);
 
-        visitorVideo,
+    visitorPreview.src = visitorPhotoBase64;
+    visitorPreview.style.display = "block";
 
-        0,
-
-        0
-
-    );
-
-    visitorPhotoBase64 =
-        visitorCanvas.toDataURL(
-
-            "image/jpeg",
-
-            0.8
-
-        );
-
-    visitorPreview.src =
-        visitorPhotoBase64;
+    // Stop camera immediately after capture
+    stopVisitorCamera();
 
 });
 
@@ -2093,7 +2077,7 @@ async function registerVisitor(guard,shift){
     alert("Visitor Registered Successfully.");
 
     clearVisitorForm();
-    stopVisitorCamera();
+    
     
 
 }
@@ -2308,6 +2292,10 @@ document.getElementById("reportIncident");
 const incidentTableBody =
 document.getElementById("incidentTableBody");
 
+const incidentTableSection =
+document.getElementById("incidentTableSection");
+incidentTableSection.style.display = "none";
+
 let incidentPhotoBase64 = "";
 
 let incidentStream = null;
@@ -2359,38 +2347,22 @@ function stopIncidentCamera() {
 
 }
 
-captureIncidentPhoto.addEventListener("click",()=>{
+captureIncidentPhoto.addEventListener("click", () => {
 
-    incidentCanvas.width =
-        incidentVideo.videoWidth;
+    incidentCanvas.width = incidentVideo.videoWidth;
+    incidentCanvas.height = incidentVideo.videoHeight;
 
-    incidentCanvas.height =
-        incidentVideo.videoHeight;
+    const ctx = incidentCanvas.getContext("2d");
 
-    const ctx =
-        incidentCanvas.getContext("2d");
+    ctx.drawImage(incidentVideo, 0, 0);
 
-    ctx.drawImage(
+    incidentPhotoBase64 = incidentCanvas.toDataURL("image/jpeg", 0.7);
 
-        incidentVideo,
+    incidentPreview.src = incidentPhotoBase64;
+    incidentPreview.style.display = "block";
 
-        0,
-
-        0
-
-    );
-
-    incidentPhotoBase64 =
-        incidentCanvas.toDataURL(
-
-            "image/jpeg",
-
-            0.7
-
-        );
-
-    incidentPreview.src =
-        incidentPhotoBase64;
+    // Stop camera immediately after capture
+    stopIncidentCamera();
 
 });
 
@@ -2607,7 +2579,6 @@ async function saveIncident(guard,shift){
     );
 
     clearIncidentForm();
-    stopIncidentCamera();
 
 }
 
@@ -2640,6 +2611,24 @@ function loadIncidents(){
         renderIncidentTable();
 
     });
+
+}
+
+async function initializeIncidentPage(){
+
+    const session = await verifyGuardOnDuty();
+
+    if(!session){
+
+        incidentTableSection.style.display = "none";
+
+        return;
+
+    }
+
+    incidentTableSection.style.display = "block";
+
+    initializeIncidentPage();
 
 }
 
@@ -2827,38 +2816,22 @@ function stopPanicCamera(){
 
 }
 
-capturePanicPhoto.addEventListener("click",()=>{
+capturePanicPhoto.addEventListener("click", () => {
 
-    panicCanvas.width =
-        panicVideo.videoWidth;
+    panicCanvas.width = panicVideo.videoWidth;
+    panicCanvas.height = panicVideo.videoHeight;
 
-    panicCanvas.height =
-        panicVideo.videoHeight;
+    const ctx = panicCanvas.getContext("2d");
 
-    const ctx =
-        panicCanvas.getContext("2d");
+    ctx.drawImage(panicVideo, 0, 0);
 
-    ctx.drawImage(
+    panicPhotoBase64 = panicCanvas.toDataURL("image/jpeg", 0.8);
 
-        panicVideo,
+    panicPreview.src = panicPhotoBase64;
+    panicPreview.style.display = "block";
 
-        0,
-
-        0
-
-    );
-
-    panicPhotoBase64 =
-        panicCanvas.toDataURL(
-
-            "image/jpeg",
-
-            0.8
-
-        );
-
-    panicPreview.src =
-        panicPhotoBase64;
+    // Stop camera immediately after capture
+    stopPanicCamera();
 
 });
 
@@ -3001,7 +2974,7 @@ async function savePanicAlert(guard,shift){
 
     clearPanicForm();
 
-    stopPanicCamera();
+    
 
 }
 
