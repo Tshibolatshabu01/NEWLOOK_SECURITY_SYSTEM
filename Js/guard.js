@@ -2296,6 +2296,14 @@ const incidentTableSection =
 document.getElementById("incidentTableSection");
 incidentTableSection.style.display = "none";
 
+
+
+incidentTableSection.style.display = "block";
+loadIncidents();
+
+incidentTableSection.style.display = "none";
+incidentTableBody.innerHTML = "";
+
 let incidentPhotoBase64 = "";
 
 let incidentStream = null;
