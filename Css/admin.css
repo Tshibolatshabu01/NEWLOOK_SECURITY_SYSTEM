@@ -1209,94 +1209,6 @@ table button:hover{
 
 
 
-/* =====================================================
-   PATROL MONITORING
-===================================================== */
-
-
-#patrols .page-header{
-
-
-    margin-bottom:25px;
-
-}
-
-
-
-#patrols .page-header h2{
-
-
-    font-size:30px;
-
-    font-weight:800;
-
-}
-
-
-
-#patrols .page-header p{
-
-
-    color:#64748b;
-
-}
-
-
-
-/* Patrol Stats */
-
-
-#patrols .stat-card:nth-child(1)::before{
-
-
-    background:
-    linear-gradient(
-        180deg,
-        #2563eb,
-        #38bdf8
-    );
-
-}
-
-
-#patrols .stat-card:nth-child(2)::before{
-
-
-    background:
-    linear-gradient(
-        180deg,
-        #16a34a,
-        #22c55e
-    );
-
-}
-
-
-#patrols .stat-card:nth-child(3)::before{
-
-
-    background:
-    linear-gradient(
-        180deg,
-        #dc2626,
-        #ef4444
-    );
-
-}
-
-
-#patrols .stat-card:nth-child(4)::before{
-
-
-    background:
-    linear-gradient(
-        180deg,
-        #f59e0b,
-        #fbbf24
-    );
-
-}
-
 
 
 /* =====================================================
@@ -2538,5 +2450,31 @@ RESPONSIVE
     .attendance-report-buttons button{
         width:100%;
     }
+
+}
+
+/* ------------------------------------------PATROL MANAGEMENT---------------------------------------- */
+
+#clearPatrolFilter{
+
+    padding:12px 20px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:#198754;
+
+    color:white;
+
+    cursor:pointer;
+
+    font-weight:600;
+
+}
+
+#clearPatrolFilter:hover{
+
+    background:#157347;
 
 }

@@ -2256,22 +2256,42 @@ function getWorkingDays(){
 
 // -------------------------------------------PATROL MANAGEMENT---------------------------------------------
 
+// ======================================================
+// PATROL MANAGEMENT
+// ======================================================
+
 const patrolTableBody =
 document.getElementById("patrolTableBody");
 
-const patrolSearch = document.getElementById("patrolSearch");
-const patrolSiteFilter = document.getElementById("patrolSiteFilter");
-const patrolDateFilter = document.getElementById("patrolDateFilter");
-const clearPatrolFilter = document.getElementById("clearPatrolFilter");
+const patrolSearch =
+document.getElementById("patrolSearch");
 
-const totalPatrols = document.getElementById("totalPatrols");
-const guardsOnPatrol = document.getElementById("guardsOnPatrol");
-const missedPatrols = document.getElementById("missedPatrols");
-const patrolCompliance = document.getElementById("patrolCompliance");
+const patrolSiteFilter =
+document.getElementById("patrolSiteFilter");
+
+const patrolDateFilter =
+document.getElementById("patrolDateFilter");
+
+const clearPatrolFilter =
+document.getElementById("clearPatrolFilter");
+
+const totalPatrols =
+document.getElementById("totalPatrols");
+
+const guardsOnPatrol =
+document.getElementById("guardsOnPatrol");
+
+const sitesCovered =
+document.getElementById("sitesCovered");
+
+const checkpointsScanned =
+document.getElementById("checkpointsScanned");
+
 let patrolData = [];
-let siteList = [];
-let guardCompliance = {};
-let guardStatus = {};
+
+// ======================================================
+// LOAD PATROLS
+// ======================================================
 
 function loadPatrols(){
 
@@ -2287,137 +2307,61 @@ function loadPatrols(){
 
         patrolData = [];
 
-        snapshot.forEach(doc=>{
+        snapshot.forEach(docSnap=>{
 
             patrolData.push({
 
-                id:doc.id,
+                id:docSnap.id,
 
-                ...doc.data()
+                ...docSnap.data()
 
             });
 
         });
 
+        loadPatrolStatistics();
+
         populateSiteFilter();
 
         renderPatrolTable(patrolData);
 
-        loadPatrolStatistics(patrolData);
-
     });
-
-}
-
-async function loadPatrolStatistics(data){
-
-    totalPatrols.textContent = data.length;
-
-    const guards = new Set();
-
-    data.forEach(p => guards.add(p.guardId));
-
-    guardsOnPatrol.textContent = guards.size;
-
-    await loadPatrolCompliance();
-
-    await loadGuardPatrolStatus();
-
-    renderPatrolTable(data);
 
 }
 
 loadPatrols();
 
-function renderPatrolTable(data){
+// ======================================================
+// LOAD STATISTICS
+// ======================================================
 
-    patrolTableBody.innerHTML = "";
 
-    data.forEach((patrol) => {
+// ======================================================
+// SITE FILTER
+// ======================================================
 
-        const stats = guardCompliance[patrol.guardId] || {
-            completed: 0,
-            expected: 0,
-            missed: 0,
-            compliance: 0
-        };
-
-        const patrolStatus = guardStatus[patrol.guardId] || "Off Duty";
-
-        let statusClass = "secondary";
-
-        if (patrolStatus === "On Schedule") {
-            statusClass = "active";
-        } else if (patrolStatus === "Patrol Due") {
-            statusClass = "warning";
-        } else if (patrolStatus === "Overdue") {
-            statusClass = "danger";
-        }
-
-        patrolTableBody.innerHTML += `
-
-            <tr onclick="viewPatrol('${patrol.id}')">
-
-                <td>${
-                    patrol.createdAt
-                        ? patrol.createdAt.toDate().toLocaleDateString()
-                        : "-"
-                }</td>
-
-                <td>${patrol.guardName || "-"}</td>
-
-                <td>${patrol.siteName || "-"}</td>
-
-                <td>${patrol.checkpointName || "-"}</td>
-
-                <td>${patrol.location || "-"}</td>
-
-                <td>${
-                    patrol.scanTime
-                        ? patrol.scanTime.toDate().toLocaleTimeString()
-                        : "-"
-                }</td>
-
-                <td>${stats.completed}</td>
-
-                <td>${stats.expected}</td>
-
-                <td>${stats.missed}</td>
-
-                <td>${stats.compliance.toFixed(1)}%</td>
-
-                <td>
-                    <span class="status ${statusClass}">
-                        ${patrolStatus}
-                    </span>
-                </td>
-
-            </tr>
-
-        `;
-
-    });
-
-}
 function populateSiteFilter(){
 
-    const sites=[
+    patrolSiteFilter.innerHTML =
+    `<option value="">All Sites</option>`;
+
+    const sites = [
 
         ...new Set(
 
-            patrolData.map(p=>p.siteName)
+            patrolData.map(
+
+                p=>p.siteName
+
+            )
 
         )
 
     ];
 
-    patrolSiteFilter.innerHTML=
-
-        `<option value="">All Sites</option>`;
-
     sites.forEach(site=>{
 
-        patrolSiteFilter.innerHTML+=`
+        patrolSiteFilter.innerHTML += `
 
             <option value="${site}">
 
@@ -2431,65 +2375,15 @@ function populateSiteFilter(){
 
 }
 
-patrolSearch.addEventListener("input",filterPatrols);
-patrolSiteFilter.addEventListener("change",filterPatrols);
-patrolDateFilter.addEventListener("change",filterPatrols);
+// ======================================================
+// SEARCH & FILTER
+// ======================================================
 
-function filterPatrols(){
+patrolSearch.addEventListener("input", filterPatrols);
 
-    let filtered=[...patrolData];
+patrolSiteFilter.addEventListener("change", filterPatrols);
 
-    const search=
-        patrolSearch.value.toLowerCase();
-
-    const site=
-        patrolSiteFilter.value;
-
-    const date=
-        patrolDateFilter.value;
-
-    if(search){
-
-        filtered=filtered.filter(p=>
-
-            p.guardName
-            .toLowerCase()
-            .includes(search)
-
-        );
-
-    }
-
-    if(site){
-
-        filtered=filtered.filter(p=>
-
-            p.siteName===site
-
-        );
-
-    }
-
-    if(date){
-
-        filtered=filtered.filter(p=>{
-
-            if(!p.createdAt) return false;
-
-            return p.createdAt
-                .toDate()
-                .toISOString()
-                .slice(0,10)===date;
-
-        });
-
-    }
-
-    renderPatrolTable(filtered);
-
-    loadPatrolStatistics(filtered);
-
-}
+patrolDateFilter.addEventListener("change", filterPatrols);
 
 clearPatrolFilter.addEventListener("click",()=>{
 
@@ -2501,9 +2395,144 @@ clearPatrolFilter.addEventListener("click",()=>{
 
     renderPatrolTable(patrolData);
 
-    loadPatrolStatistics(patrolData);
+    loadPatrolStatistics();
 
 });
+
+function filterPatrols(){
+
+    let filtered = [...patrolData];
+
+    const search =
+    patrolSearch.value.toLowerCase();
+
+    const site =
+    patrolSiteFilter.value;
+
+    const date =
+    patrolDateFilter.value;
+
+    if(search){
+
+        filtered = filtered.filter(p =>
+
+            (p.guardName || "")
+            .toLowerCase()
+            .includes(search)
+
+        );
+
+    }
+
+    if(site){
+
+        filtered = filtered.filter(
+
+            p => p.siteName === site
+
+        );
+
+    }
+
+    if(date){
+
+        filtered = filtered.filter(p=>{
+
+            if(!p.scanTime) return false;
+
+            return p.scanTime
+                .toDate()
+                .toISOString()
+                .slice(0,10) === date;
+
+        });
+
+    }
+
+    renderPatrolTable(filtered);
+
+}
+
+// ======================================================
+// PATROL TABLE
+// ======================================================
+
+function renderPatrolTable(data){
+
+    patrolTableBody.innerHTML = "";
+
+    data.forEach(patrol=>{
+
+        const row =
+        document.createElement("tr");
+
+        row.innerHTML = `
+
+            <td>
+
+                ${patrol.guardName || "-"}
+
+            </td>
+
+            <td>
+
+                ${patrol.employeeID || "-"}
+
+            </td>
+
+            <td>
+
+                ${patrol.siteName || "-"}
+
+            </td>
+
+            <td>
+
+                ${patrol.checkpointName || "-"}
+
+            </td>
+
+            <td>
+
+                ${
+                    patrol.scanTime
+                    ? patrol.scanTime.toDate().toLocaleString()
+                    : "-"
+                }
+
+            </td>
+
+            <td>
+
+                <button
+                class="view-patrol-btn">
+
+                    View
+
+                </button>
+
+            </td>
+
+        `;
+
+        row.querySelector(".view-patrol-btn")
+        .addEventListener("click",()=>{
+
+            viewPatrol(
+                patrol.id
+            );
+
+        });
+
+        patrolTableBody.appendChild(row);
+
+    });
+
+}
+
+// ======================================================
+// PATROL DETAILS MODAL
+// ======================================================
 
 const patrolModal =
 document.getElementById("patrolModal");
@@ -2524,110 +2553,99 @@ function viewPatrol(id){
 
     if(!patrol) return;
 
-    const stats = guardCompliance[patrol.guardId] || {
-
-    completed: 0,
-
-    expected: 0,
-
-    missed: 0,
-
-    compliance: 0
-
- };
-
- const status = guardStatus[patrol.guardId] || "Off Duty";
-
     patrolDetails.innerHTML = `
 
         <table class="details-table">
 
             <tr>
+
                 <th>Guard</th>
+
                 <td>${patrol.guardName}</td>
+
             </tr>
 
             <tr>
+
                 <th>Employee ID</th>
+
                 <td>${patrol.employeeID}</td>
+
             </tr>
 
             <tr>
+
                 <th>Site</th>
+
                 <td>${patrol.siteName}</td>
+
             </tr>
 
             <tr>
+
                 <th>Checkpoint</th>
+
                 <td>${patrol.checkpointName}</td>
+
             </tr>
 
             <tr>
-                <th>Location</th>
-                <td>${patrol.location}</td>
+
+                <th>Checkpoint Code</th>
+
+                <td>${patrol.checkpointCode}</td>
+
             </tr>
 
             <tr>
+
                 <th>Latitude</th>
+
                 <td>${patrol.latitude}</td>
+
             </tr>
 
             <tr>
+
                 <th>Longitude</th>
+
                 <td>${patrol.longitude}</td>
+
             </tr>
 
             <tr>
+
                 <th>Scan Time</th>
-                <td>${
-                    patrol.scanTime
-                    ? patrol.scanTime.toDate().toLocaleString()
-                    : "-"
-                }</td>
-            </tr>
 
-            <tr>
-              <th>Completed Patrols</th>
-              <td>${stats.completed}</td>
-           </tr>
+                <td>
 
-            <tr>
-             <th>Expected Patrols</th>
-             <td>${stats.expected}</td>
-            </tr>
+                    ${
+                        patrol.scanTime
+                        ? patrol.scanTime.toDate().toLocaleString()
+                        : "-"
+                    }
 
-            <tr>
-              <th>Missed Patrols</th>
-              <td>${stats.missed}</td>
-            </tr>
+                </td>
 
-            <tr>
-              <th>Compliance</th>
-              <td>${stats.compliance.toFixed(1)}%</td>
-            </tr>
-
-            <tr>
-              <th>Status</th>
-              <td>${status}</td>
             </tr>
 
         </table>
 
     `;
 
-    patrolModal.style.display="block";
+    patrolModal.style.display = "flex";
 
 }
 
-closePatrolModal.onclick = () => {
+closePatrolModal.addEventListener("click",()=>{
 
-    patrolModal.style.display = "none";
+    patrolModal.style.display="none";
 
-};
+});
 
-window.addEventListener("click", (event)=>{
+window.addEventListener("click",(e)=>{
 
-    if(event.target===patrolModal){
+    if(e.target===patrolModal){
 
         patrolModal.style.display="none";
 
@@ -2635,296 +2653,162 @@ window.addEventListener("click", (event)=>{
 
 });
 
-async function loadPatrolCompliance(){
-
-    const today = getTodayDate();
-
-    const shiftSnapshot = await getDocs(
-        query(
-            collection(db,"shiftRecords"),
-            where("date","==",today)
-        )
-    );
-
-    let expected = 0;
-    let completed = 0;
-    let missed = 0;
-
-    for(const docSnap of shiftSnapshot.docs){
-
-        const record = docSnap.data();
-
-        completed += Number(record.patrolCount || 0);
-
-        const shiftQuery = await getDocs(
-
-            query(
-
-                collection(db,"shifts"),
-
-                where("shiftId","==",record.shiftId)
-
-            )
-
-        );
-
-        if(shiftQuery.empty) continue;
-
-        const shift = shiftQuery.docs[0].data();
-
-        const shiftMinutes =
-            getMinutesBetween(
-                shift.startTime,
-                shift.endTime
-            );
-
-        const expectedPatrols =
-            Math.floor(
-
-                shiftMinutes /
-
-                Number(shift.patrolInterval)
-
-            );
-
-           expected += expectedPatrols;
-
-        const completedPatrols =
-             Number(record.patrolCount || 0);
-
-        const missedPatrolsCount =
-               Math.max(
-                 0,
-               expectedPatrols - completedPatrols
-        );
-
-        const compliance =
-             expectedPatrols === 0
-              ? 100
-         : (
-            completedPatrols /
-            expectedPatrols
-          ) * 100;
-
-          guardCompliance[
-          record.guardId
-        ] = {
-
-          completed: completedPatrols,
-
-         expected: expectedPatrols,
-
-         missed: missedPatrolsCount,
-
-          compliance
-
-        };
-
-    }
-
-    missed = Math.max(0, expected - completed);
-
-    const compliance =
-        expected === 0
-
-        ? 100
-
-        : ((completed / expected) * 100);
-
-    missedPatrols.textContent = missed;
-
-    patrolCompliance.textContent =
-        compliance.toFixed(1) + "%";
-
-}
-
-function getMinutesBetween(start,end){
-
-    const [sh, sm] = start.split(":").map(Number);
-
-    const [eh, em] = end.split(":").map(Number);
-
-    let startMinutes = sh * 60 + sm;
-
-    let endMinutes = eh * 60 + em;
-
-    if(endMinutes < startMinutes){
-
-        endMinutes += 24 * 60;
-
-    }
-
-    return endMinutes - startMinutes;
-
-}
-
-async function loadGuardPatrolStatus(){
-
-    const today = getTodayDate();
-
-    const records = await getDocs(
-
-        query(
-
-            collection(db,"shiftRecords"),
-
-            where("date","==",today)
-
-        )
-
-    );
-
-    guardStatus = {};
-
-    for(const docSnap of records.docs){
-
-        const record = docSnap.data();
-
-        const shiftQuery = await getDocs(
-
-            query(
-
-                collection(db,"shifts"),
-
-                where("shiftId","==",record.shiftId)
-
-            )
-
-        );
-
-        if(shiftQuery.empty) continue;
-
-        const shift = shiftQuery.docs[0].data();
-
-        const interval =
-            Number(shift.patrolInterval);
-
-        const grace =
-            Number(shift.patrolGrace || 0);
-
-        let status = "On Schedule";
-
-        if(record.lastPatrolTime){
-
-            const last =
-                record.lastPatrolTime.toDate();
-
-            const elapsed =
-                Math.floor(
-
-                    (Date.now() -
-
-                    last.getTime())
-
-                    /60000
-
-                );
-
-            if(elapsed >= interval + grace){
-
-                status = "Overdue";
-
-            }
-
-            else if(elapsed >= interval){
-
-                status = "Patrol Due";
-
-            }
-
-        }
-
-        guardStatus[
-            record.guardId
-        ] = status;
-
-    }
- 
-}
-
-// EXCEL
+// ======================================================
+// EXPORT PATROLS TO EXCEL
+// ======================================================
 
 const exportPatrolExcel =
 document.getElementById("exportPatrolExcel");
 
-exportPatrolExcel.addEventListener("click",exportPatrolsExcel);
+exportPatrolExcel.addEventListener(
+    "click",
+    exportPatrolsExcel
+);
 
 function exportPatrolsExcel(){
 
-    const table =
-        document.querySelector("#patrols table");
+    const rows = [];
+
+    patrolData.forEach(patrol=>{
+
+        rows.push({
+
+            Date:
+            patrol.scanTime
+            ? patrol.scanTime.toDate().toLocaleDateString()
+            : "",
+
+            Time:
+            patrol.scanTime
+            ? patrol.scanTime.toDate().toLocaleTimeString()
+            : "",
+
+            Guard:
+            patrol.guardName,
+
+            EmployeeID:
+            patrol.employeeID,
+
+            Site:
+            patrol.siteName,
+
+            Checkpoint:
+            patrol.checkpointName,
+
+            CheckpointCode:
+            patrol.checkpointCode,
+
+            Latitude:
+            patrol.latitude,
+
+            Longitude:
+            patrol.longitude
+
+        });
+
+    });
+
+    const worksheet =
+    XLSX.utils.json_to_sheet(rows);
 
     const workbook =
-        XLSX.utils.table_to_book(
-            table,
-            {
-                sheet:"Patrol Report"
-            }
-        );
+    XLSX.utils.book_new();
 
-    const today =
-        new Date()
-        .toISOString()
-        .slice(0,10);
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        worksheet,
+
+        "Patrols"
+
+    );
 
     XLSX.writeFile(
 
         workbook,
 
-        `Patrol_Report_${today}.xlsx`
+        "Patrol_Report.xlsx"
 
     );
 
 }
 
-// PDF
+// ======================================================
+// EXPORT PATROL REPORT PDF
+// ======================================================
 
 const exportPatrolPDF =
 document.getElementById("exportPatrolPDF");
 
-exportPatrolPDF.addEventListener("click",exportPatrolsPDF);
+exportPatrolPDF.addEventListener(
 
-async function exportPatrolsPDF(){
+    "click",
+
+    exportPatrolsPDF
+
+);
+
+function exportPatrolsPDF(){
 
     const { jsPDF } = window.jspdf;
 
-    const doc = new jsPDF();
+    const pdf =
+    new jsPDF();
 
-    doc.setFontSize(18);
+    pdf.setFontSize(18);
 
-    doc.text(
+    pdf.text(
+
         "NEWLOOK SECURITY SYSTEM",
+
         14,
-        15
+
+        18
+
     );
 
-    doc.setFontSize(12);
+    pdf.setFontSize(12);
 
-    doc.text(
-        "Patrol Monitoring Report",
+    pdf.text(
+
+        "Patrol Report",
+
         14,
-        25
+
+        28
+
     );
 
-    doc.text(
-        "Generated: " +
-        new Date().toLocaleString(),
-        14,
-        33
-    );
+    pdf.autoTable({
 
-    const rows=[];
+        head:[[
 
-    patrolData.forEach(p=>{
+            "Date",
 
-        const stats =
-            guardCompliance[p.guardId] || {};
+            "Time",
 
-        rows.push([
+            "Guard",
 
-            p.createdAt
-            ? p.createdAt.toDate().toLocaleDateString()
-            : "-",
+            "Employee ID",
+
+            "Site",
+
+            "Checkpoint"
+
+        ]],
+
+        body:
+
+        patrolData.map(p=>[
+
+            p.scanTime
+            ? p.scanTime.toDate().toLocaleDateString()
+            : "",
+
+            p.scanTime
+            ? p.scanTime.toDate().toLocaleTimeString()
+            : "",
 
             p.guardName,
 
@@ -2932,53 +2816,70 @@ async function exportPatrolsPDF(){
 
             p.siteName,
 
-            p.checkpointName,
+            p.checkpointName
 
-            p.location,
-
-            p.scanTime
-            ? p.scanTime.toDate().toLocaleTimeString()
-            : "-",
-
-            stats.completed || 0,
-
-            stats.expected || 0,
-
-            (stats.compliance || 0).toFixed(1)+"%",
-
-            guardStatus[p.guardId] || "Off Duty"
-
-        ]);
+        ])
 
     });
 
-    doc.autoTable({
-
-        startY:40,
-
-        head:[[
-            "Date",
-            "Guard",
-            "Employee ID",
-            "Site",
-            "Checkpoint",
-            "Location",
-            "Scan Time",
-            "Completed",
-            "Expected",
-            "Compliance",
-            "Status"
-        ]],
-
-        body:rows
-
-    });
-
-    doc.save(
+    pdf.save(
 
         "Patrol_Report.pdf"
 
     );
+
+}
+
+function loadPatrolStatistics(){
+
+    totalPatrols.textContent =
+    patrolData.length;
+
+    const guards = new Set();
+    const sites = new Set();
+
+    let today = 0;
+
+    const todayDate =
+    new Date().toISOString().slice(0,10);
+
+    patrolData.forEach(patrol=>{
+
+        guards.add(patrol.guardId);
+
+        sites.add(patrol.siteName);
+
+        if(patrol.scanTime){
+
+            if(
+
+                patrol.scanTime
+                .toDate()
+                .toISOString()
+                .slice(0,10)
+
+                ===
+
+                todayDate
+
+            ){
+
+                today++;
+
+            }
+
+        }
+
+    });
+
+    guardsOnPatrol.textContent =
+    guards.size;
+
+    sitesCovered.textContent =
+    sites.size;
+
+    todayPatrols.textContent =
+    today;
 
 }
 

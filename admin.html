@@ -968,87 +968,110 @@ Download Excel
 
         </section>
 
-        <section id="patrols" class="page">
+        <!-- =====================================================
+PATROL MANAGEMENT
+===================================================== -->
 
-    <div class="page-header">
-        <h2>Patrol Monitoring</h2>
-        <p>Monitor all guard patrol activities in real time.</p>
-    </div>
+<section id="patrols" class="page">
+
+    <h2>Patrol Management</h2>
+
+    <!-- ==========================
+    STATISTICS
+    =========================== -->
 
     <div class="stats-grid">
 
         <div class="stat-card">
-            <h3 id="totalPatrols">0</h3>
-            <p>Total Patrols Today</p>
+            <h3>Total Patrols</h3>
+            <span id="totalPatrols">0</span>
         </div>
 
         <div class="stat-card">
-            <h3 id="guardsOnPatrol">0</h3>
-            <p>Guards On Patrol</p>
+            <h3>Guards On Patrol</h3>
+            <span id="guardsOnPatrol">0</span>
         </div>
 
         <div class="stat-card">
-            <h3 id="missedPatrols">0</h3>
-            <p>Missed Patrols</p>
+            <h3>Sites Covered</h3>
+            <span id="sitesCovered">0</span>
         </div>
 
         <div class="stat-card">
-            <h3 id="patrolCompliance">0%</h3>
-            <p>Compliance</p>
+            <h3>Today's Patrols</h3>
+            <span id="todayPatrols">0</span>
         </div>
 
     </div>
 
-    <div class="filter-bar">
 
-    <input
-        type="text"
-        id="patrolSearch"
-        placeholder="Search Guard..."
-    >
+    <!-- ==========================
+    FILTER BAR
+    =========================== -->
 
-    <select id="patrolSiteFilter">
-        <option value="">All Sites</option>
-    </select>
+    <div class="table-toolbar">
 
-    <input
-        type="date"
-        id="patrolDateFilter"
-    >
+        <input
+            type="text"
+            id="patrolSearch"
+            placeholder="Search Guard">
 
-    <button id="clearPatrolFilter">
-        Clear
-    </button>
+        <select id="patrolSiteFilter">
 
-</div><br><br>
+            <option value="">
+                All Sites
+            </option>
 
-<div class="action-buttons">
+        </select>
 
-    <button id="exportPatrolPDF">
-        Export PDF
-    </button>
+        <input
+            type="date"
+            id="patrolDateFilter">
 
-    <button id="exportPatrolExcel">
-        Export Excel
-    </button>
+        <button id="clearPatrolFilter">
 
-</div><br>
+            Clear
+
+        </button>
+
+        <button id="exportPatrolExcel">
+
+            Export Excel
+
+        </button>
+
+        <button id="exportPatrolPDF">
+
+            Export PDF
+
+        </button>
+
+    </div>
+
+
+    <!-- ==========================
+    TABLE
+    =========================== -->
 
     <div class="table-container">
 
-        <table class="data-table">
+        <table>
 
             <thead>
 
                 <tr>
 
-                    <th>Date</th>
                     <th>Guard</th>
+
+                    <th>Employee ID</th>
+
                     <th>Site</th>
+
                     <th>Checkpoint</th>
-                    <th>Location</th>
+
                     <th>Scan Time</th>
-                    <th>Status</th>
+
+                    <th>Action</th>
 
                 </tr>
 
@@ -1062,21 +1085,41 @@ Download Excel
 
     </div>
 
-    <div id="patrolModal" class="modal">
+</section>
+
+
+
+<!-- =====================================================
+PATROL DETAILS MODAL
+===================================================== -->
+
+<div
+    id="patrolModal"
+    class="modal">
 
     <div class="modal-content">
 
-        <span id="closePatrolModal" class="close">&times;</span>
+        <span
+            class="close"
+            id="closePatrolModal">
 
-        <h2>Patrol Details</h2>
+            &times;
 
-        <div id="patrolDetails"></div>
+        </span>
+
+        <h2>
+
+            Patrol Details
+
+        </h2>
+
+        <div id="patrolDetails">
+
+        </div>
 
     </div>
 
 </div>
-
-</section>
 
         <!-- Visitors -->
 
