@@ -1240,7 +1240,7 @@ async function saveAttendanceEvent(employee){
 
 }
 
-// -------------------------------------SHIFTRECORD------------------------------------------------------------
+// -------------------------------------ATTENDANCERECORD------------------------------------------------------------
 
 
 
@@ -1309,43 +1309,6 @@ function getFirstClockIn(records){
     return first || null;
 
 }
-
-
-//====================================================
-// CALCULATE ALL WORK PERIODS
-//====================================================
-
-
-
-
-//====================================================
-// GET ASSIGNED SHIFT
-//====================================================
-
-
-
-//====================================================
-// LATE CALCULATION
-//====================================================
-
-
-
-//====================================================
-// ATTENDANCE STATUS
-//====================================================
-
-
-
-//====================================================
-// CALCULATE EXPECTED SHIFT HOURS
-//====================================================
-
-
-//====================================================
-// COMPARE WORK RESULT
-//====================================================
-
-
 
 
 function getLastClockOut(records){
@@ -1486,10 +1449,7 @@ function calculateAllWorkingPeriods(records){
 
 }
 
-async function createShiftRecord(
- employee,
- records
- ){
+async function createAttendanceRecord(employee, records){
 
 
     const first =
@@ -1599,7 +1559,7 @@ async function createShiftRecord(
 
         collection(
             db,
-            "shiftRecords"
+            "attendanceRecords"
         ),
 
         {
@@ -1745,7 +1705,7 @@ async function checkForNewDay(employee){
 
     const exists =
 
-    await shiftRecordExists(
+    await attendanceRecordExists(
 
         employee.employeeID,
 
@@ -1783,7 +1743,7 @@ async function checkForNewDay(employee){
 
 
 
-    await createShiftRecord(
+    await createAttendanceRecord(
 
         employee,
 
@@ -1792,11 +1752,11 @@ async function checkForNewDay(employee){
     );
 
 }
-async function shiftRecordExists(employeeID,date){
+async function attendanceRecordExists(employeeID,date){
 
     const q = query(
 
-        collection(db,"shiftRecords"),
+        collection(db,"attendanceRecords"),
 
         where("employeeID","==",employeeID),
 

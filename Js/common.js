@@ -1,534 +1,1524 @@
 /*=====================================================
-RESET
+REPORTS DATA
 =====================================================*/
+const reportType = document.getElementById("reportType")
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:"Segoe UI",sans-serif;
+const reportGuard = document.getElementById("reportGuard");
+const reportCustomer = document.getElementById("reportCustomer");
+
+const reportFromDate = document.getElementById("reportFromDate");
+const reportToDate = document.getElementById("reportToDate");
+
+const generateReportBtn =
+document.getElementById("generateReport");
+
+const printReportBtn =
+document.getElementById("printReport");
+
+const exportPDFBtn =
+document.getElementById("exportPDF");
+
+const exportExcelBtn =
+document.getElementById("exportExcel");
+
+const reportViewer =
+document.getElementById("reportViewer");
+
+reportType.addEventListener("change", () => {
+
+    reportGuard.parentElement.style.display = "none";
+    reportCustomer.parentElement.style.display = "none";
+
+    if(reportType.value === "single"){
+
+        reportGuard.parentElement.style.display = "block";
+
+    }
+
+    if(reportType.value === "customer"){
+
+        reportCustomer.parentElement.style.display = "block";
+
+    }
+
+});
+
+async function loadReportGuards(){
+
+    reportGuard.innerHTML =
+    `<option value="">Select Guard</option>`;
+
+    const snapshot =
+    await getDocs(collection(db,"guards"));
+
+    snapshot.forEach(doc=>{
+
+        const guard = doc.data();
+
+        reportGuard.innerHTML += `
+
+        <option
+
+            value="${guard.guardId}"
+
+            data-employee="${guard.employeeID}"
+
+            data-site="${guard.siteId || ""}">
+
+            ${guard.fullName}
+
+        </option>
+
+        `;
+
+    });
+
 }
 
-html,
-body{
+async function loadReportCustomers(){
 
-    width:100%;
-    height:100%;
-    overflow:hidden;
+    reportCustomer.innerHTML =
+    `<option value="">Select Customer</option>`;
 
-    background:#000;
+    const snapshot =
+    await getDocs(collection(db,"sites"));
 
-}
+    snapshot.forEach(doc=>{
 
-.attendance-app{
+        const site = doc.data();
 
-    position:relative;
+        reportCustomer.innerHTML += `
 
-    width:100vw;
-    height:100vh;
+        <option value="${site.siteId}">
 
-    overflow:hidden;
+            ${site.customerName}
 
-}
+        </option>
 
+        `;
 
-/*=====================================================
-FULL SCREEN CAMERA
-=====================================================*/
-
-#attendanceVideo{
-
-    position:absolute;
-
-    inset:0;
-
-    width:100%;
-    height:100%;
-
-    object-fit:cover;
-
-    background:#000;
-
-    z-index:1;
+    });
 
 }
 
-#attendanceCanvas{
+loadReportGuards();
 
-    position:absolute;
+loadReportCustomers();
 
-    inset:0;
+generateReportBtn.addEventListener(
 
-    width:100%;
-    height:100%;
+    "click",
 
-    z-index:2;
+    generateReport
 
-    pointer-events:none;
+);
+
+async function generateReport(){
+
+    if(!reportFromDate.value){
+
+        alert("Select From Date");
+
+        return;
+
+    }
+
+    if(!reportToDate.value){
+
+        alert("Select To Date");
+
+        return;
+
+    }
+
+    switch(reportType.value){
+
+        case "single":
+
+            await generateSingleGuardReport();
+
+            break;
+
+        case "all":
+
+            await generateAllGuardsReport();
+
+            break;
+
+        case "customer":
+
+            await generateCustomerReport();
+
+            break;
+
+        default:
+
+            alert("Select Report Type");
+
+    }
 
 }
 
+async function getAttendanceRecords(){
 
-/*=====================================================
-DARK OVERLAY
-=====================================================*/
+    const snapshot =
 
-.camera-overlay{
+    await getDocs(
 
-    position:absolute;
-
-    inset:0;
-
-    background:
-
-    linear-gradient(
-
-        rgba(0,0,0,.35),
-
-        rgba(0,0,0,.55)
+        collection(db,"attendanceRecords")
 
     );
 
-    z-index:3;
+    const records = [];
+
+    snapshot.forEach(doc=>{
+
+        records.push({
+
+            id:doc.id,
+
+            ...doc.data()
+
+        });
+
+    });
+
+    return records;
 
 }
 
+function formatTimestamp(timestamp){
 
-/*=====================================================
-TOP BAR
-=====================================================*/
+    if(!timestamp) return "-";
 
-.top-bar{
+    if(timestamp.toDate){
 
-    position:absolute;
+        return timestamp
+            .toDate()
+            .toLocaleString();
 
-    top:0;
+    }
 
-    left:0;
+    return new Date(timestamp)
+        .toLocaleString();
 
-    right:0;
+}
 
-    z-index:10;
+async function generateSingleGuardReport(){
 
-    display:flex;
+    if(!reportGuard.value){
 
-    justify-content:space-between;
+        alert("Select a guard.");
 
-    align-items:center;
+        return;
 
-    padding:30px 40px;
+    }
 
-    background:
+    const option =
+    reportGuard.options[
+        reportGuard.selectedIndex
+    ];
 
-    linear-gradient(
+    const guardId =
+    option.value;
 
-        rgba(0,0,0,.65),
+    const employeeID =
+    option.dataset.employee;
 
-        transparent
+    const allRecords =
+    await getAttendanceRecords();
+
+    const records =
+    allRecords.filter(record=>
+
+        record.guardId===guardId &&
+
+        record.employeeID===employeeID &&
+
+        record.recordDate>=reportFromDate.value &&
+
+        record.recordDate<=reportToDate.value
 
     );
 
+    if(records.length===0){
+
+        reportViewer.innerHTML=`
+
+        <div class="report-placeholder">
+
+            <h3>
+
+                No Attendance Records Found
+
+            </h3>
+
+        </div>
+
+        `;
+
+        return;
+
+    }
+
+    records.sort((a,b)=>
+
+        a.recordDate.localeCompare(
+
+            b.recordDate
+
+        )
+
+    );
+
+    const guard=
+    records[0];
+
+    const totals=
+    calculateAttendanceTotals(records);
+
+    let rows="";
+
+    records.forEach(record=>{
+
+        rows+=`
+
+        <tr>
+
+            <td>${record.recordDate}</td>
+
+            <td>${formatTimestamp(record.firstClockIn)}</td>
+
+            <td>${formatTimestamp(record.lastClockOut)}</td>
+
+            <td>${record.totalWorkingHours||0}</td>
+
+            <td>${record.expectedWorkingHours||0}</td>
+
+            <td>${record.lateMinutes||0}</td>
+
+            <td>${record.overtimeMinutes||0}</td>
+
+            <td>${record.shortageMinutes||0}</td>
+
+            <td>${record.attendancePercentage||0}%</td>
+
+            <td>${record.attendanceStatus}</td>
+
+            <td>${record.siteName}</td>
+
+            <td>${record.assignedShift}</td>
+
+        </tr>
+
+        `;
+
+    });
+
+    reportViewer.innerHTML=`
+
+<div class="report-page page-break">
+
+<div class="report-header">
+
+<div>
+
+<img
+src="images/logo.png"
+class="company-logo">
+
+</div>
+
+<div class="company-details">
+
+<h2>
+
+NEWLOOK SECURITY
+
+</h2>
+
+<h4>
+
+Guard Attendance Report
+
+</h4>
+
+<p>
+
+Reporting Period
+
+<br>
+
+${reportFromDate.value}
+
+-
+
+${reportToDate.value}
+
+</p>
+
+</div>
+
+<div class="generated-details">
+
+Generated By :
+
+${generatedBy}
+
+<br><br>
+
+Date :
+
+${new Date().toLocaleDateString()}
+
+<br>
+
+Time :
+
+${new Date().toLocaleTimeString()}
+
+</div>
+
+</div>
+
+<div class="guard-info">
+
+<div>
+
+<strong>Guard</strong>
+
+<br>
+
+${guard.guardName}
+
+</div>
+
+<div>
+
+<strong>Employee ID</strong>
+
+<br>
+
+${guard.employeeID}
+
+</div>
+
+<div>
+
+<strong>Department</strong>
+
+<br>
+
+${guard.department}
+
+</div>
+
+<div>
+
+<strong>Site</strong>
+
+<br>
+
+${guard.siteName}
+
+</div>
+
+</div>
+
+<table class="report-table">
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Clock In</th>
+
+<th>Clock Out</th>
+
+<th>Worked</th>
+
+<th>Expected</th>
+
+<th>Late</th>
+
+<th>Overtime</th>
+
+<th>Shortage</th>
+
+<th>Attendance %</th>
+
+<th>Status</th>
+
+<th>Site</th>
+
+<th>Shift</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${rows}
+
+</tbody>
+
+</table>
+
+<div class="report-summary">
+
+<div class="summary-card">
+
+<h4>
+
+Attendance Summary
+
+</h4>
+
+<p>Total Working Days : ${totals.totalWorkingDays}</p>
+
+<p>Present Days : ${totals.presentDays}</p>
+
+<p>Late Days : ${totals.lateDays}</p>
+
+<p>Absent Days : ${totals.absentDays}</p>
+
+<p>Total Worked Hours : ${totals.workedHours}</p>
+
+<p>Total Expected Hours : ${totals.expectedHours}</p>
+
+<p>Total Overtime : ${totals.overtimeHours}</p>
+
+<p>Total Shortage : ${totals.shortageHours}</p>
+
+<p>Average Attendance : ${totals.averageAttendance}%</p>
+
+<p>Average Hours/Day : ${totals.averageHours}</p>
+
+</div>
+
+</div>
+
+<div class="signature-section">
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Supervisor
+
+</div>
+
+</div>
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Manager
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
 }
 
-.logo h1{
+function calculateAttendanceTotals(records){
 
-    color:#fff;
+    let present=0;
+    let absent=0;
+    let late=0;
 
-    font-size:40px;
+    let worked=0;
+    let expected=0;
 
-    font-weight:800;
+    let overtime=0;
+    let shortage=0;
 
-    letter-spacing:2px;
+    let attendance=0;
+
+    records.forEach(record=>{
+
+        if(record.attendanceStatus==="Present")
+            present++;
+
+        if(record.attendanceStatus==="Absent")
+            absent++;
+
+        if(record.lateMinutes>0)
+            late++;
+
+        worked+=Number(
+            record.totalWorkingHours||0
+        );
+
+        expected+=Number(
+            record.expectedWorkingHours||0
+        );
+
+        overtime+=Number(
+            record.overtimeMinutes||0
+        )/60;
+
+        shortage+=Number(
+            record.shortageMinutes||0
+        )/60;
+
+        attendance+=Number(
+            record.attendancePercentage||0
+        );
+
+    });
+
+    return{
+
+        totalWorkingDays:
+        records.length,
+
+        presentDays:
+        present,
+
+        absentDays:
+        absent,
+
+        lateDays:
+        late,
+
+        workedHours:
+        worked.toFixed(2),
+
+        expectedHours:
+        expected.toFixed(2),
+
+        overtimeHours:
+        overtime.toFixed(2),
+
+        shortageHours:
+        shortage.toFixed(2),
+
+        averageHours:
+        records.length
+        ?
+        (
+            worked/
+            records.length
+        ).toFixed(2)
+        :
+        "0",
+
+        averageAttendance:
+        records.length
+        ?
+        (
+            attendance/
+            records.length
+        ).toFixed(2)
+        :
+        "0"
+
+    };
 
 }
-
-.logo span{
-
-    color:#3fa9ff;
-
-    font-size:15px;
-
-}
-
-.live-clock{
-
-    text-align:right;
-
-}
-
-.live-clock h2{
-
-    color:#fff;
-
-    font-size:38px;
-
-    font-weight:700;
-
-}
-
-.live-clock p{
-
-    color:#d1d5db;
-
-    margin-top:5px;
-
-}
-
 
 /*=====================================================
-SCANNER
+ALL GUARDS REPORT
 =====================================================*/
 
-.scanner-area{
+async function generateAllGuardsReport(){
 
-    position:absolute;
+    const records =
+    await getAttendanceRecords();
 
-    top:50%;
+    const groupedGuards = {};
 
-    left:50%;
+    records.forEach(record=>{
 
-    transform:translate(-50%,-50%);
+        if(
 
-    z-index:10;
+            record.recordDate >= reportFromDate.value &&
 
-}
+            record.recordDate <= reportToDate.value
 
-.scanner-frame{
+        ){
 
-    width:420px;
+            const key =
 
-    height:520px;
+            `${record.guardId}_${record.employeeID}`;
 
-    border:5px solid #38bdf8;
+            if(!groupedGuards[key]){
 
-    border-radius:30px;
+                groupedGuards[key] = [];
 
-    position:relative;
+            }
 
-    overflow:hidden;
+            groupedGuards[key].push(record);
 
-    box-shadow:
+        }
 
-        0 0 40px rgba(56,189,248,.45);
+    });
 
-}
+    const guardKeys =
+    Object.keys(groupedGuards);
 
-.scanner-line{
+    if(guardKeys.length===0){
 
-    position:absolute;
+        reportViewer.innerHTML=`
 
-    left:0;
+        <div class="report-placeholder">
 
-    width:100%;
+            <h3>
 
-    height:4px;
+                No Attendance Records Found
 
-    background:#38bdf8;
+            </h3>
 
-    animation:scan 2.5s linear infinite;
+        </div>
 
-}
+        `;
 
-@keyframes scan{
-
-    0%{
-
-        top:0;
+        return;
 
     }
 
-    100%{
+    let html="";
 
-        top:100%;
+    guardKeys.forEach(key=>{
 
-    }
+        const records =
+        groupedGuards[key];
+
+        records.sort((a,b)=>
+
+            a.recordDate.localeCompare(
+
+                b.recordDate
+
+            )
+
+        );
+
+        const guard =
+        records[0];
+
+        const totals =
+        calculateAttendanceTotals(records);
+
+        let rows="";
+
+        records.forEach(record=>{
+
+            rows+=`
+
+            <tr>
+
+                <td>${record.recordDate}</td>
+
+                <td>${formatTimestamp(record.firstClockIn)}</td>
+
+                <td>${formatTimestamp(record.lastClockOut)}</td>
+
+                <td>${record.totalWorkingHours||0}</td>
+
+                <td>${record.expectedWorkingHours||0}</td>
+
+                <td>${record.lateMinutes||0}</td>
+
+                <td>${record.overtimeMinutes||0}</td>
+
+                <td>${record.shortageMinutes||0}</td>
+
+                <td>${record.attendancePercentage||0}%</td>
+
+                <td>${record.attendanceStatus}</td>
+
+                <td>${record.siteName}</td>
+
+                <td>${record.assignedShift}</td>
+
+            </tr>
+
+            `;
+
+        });
+
+        html += `
+
+<div class="report-page page-break">
+
+<div class="report-header">
+
+<div>
+
+<img
+src="images/logo.png"
+class="company-logo">
+
+</div>
+
+<div class="company-details">
+
+<h2>
+
+NEWLOOK SECURITY
+
+</h2>
+
+<h4>
+
+All Guards Attendance Report
+
+</h4>
+
+<p>
+
+Reporting Period
+
+<br>
+
+${reportFromDate.value}
+
+-
+
+${reportToDate.value}
+
+</p>
+
+</div>
+
+<div class="generated-details">
+
+Generated By :
+
+${generatedBy}
+
+<br><br>
+
+Date :
+
+${new Date().toLocaleDateString()}
+
+<br>
+
+Time :
+
+${new Date().toLocaleTimeString()}
+
+</div>
+
+</div>
+
+<div class="guard-info">
+
+<div>
+
+<strong>Guard</strong>
+
+<br>
+
+${guard.guardName}
+
+</div>
+
+<div>
+
+<strong>Employee ID</strong>
+
+<br>
+
+${guard.employeeID}
+
+</div>
+
+<div>
+
+<strong>Department</strong>
+
+<br>
+
+${guard.department}
+
+</div>
+
+<div>
+
+<strong>Site</strong>
+
+<br>
+
+${guard.siteName}
+
+</div>
+
+</div>
+
+<table class="report-table">
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Clock In</th>
+
+<th>Clock Out</th>
+
+<th>Worked</th>
+
+<th>Expected</th>
+
+<th>Late</th>
+
+<th>Overtime</th>
+
+<th>Shortage</th>
+
+<th>Attendance %</th>
+
+<th>Status</th>
+
+<th>Site</th>
+
+<th>Shift</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${rows}
+
+</tbody>
+
+</table>
+
+<div class="report-summary">
+
+<div class="summary-card">
+
+<h4>
+
+Attendance Summary
+
+</h4>
+
+<p>Total Working Days : ${totals.totalWorkingDays}</p>
+
+<p>Present Days : ${totals.presentDays}</p>
+
+<p>Late Days : ${totals.lateDays}</p>
+
+<p>Absent Days : ${totals.absentDays}</p>
+
+<p>Total Worked Hours : ${totals.workedHours}</p>
+
+<p>Total Expected Hours : ${totals.expectedHours}</p>
+
+<p>Total Overtime : ${totals.overtimeHours}</p>
+
+<p>Total Shortage : ${totals.shortageHours}</p>
+
+<p>Average Attendance : ${totals.averageAttendance}%</p>
+
+<p>Average Hours/Day : ${totals.averageHours}</p>
+
+</div>
+
+</div>
+
+<div class="signature-section">
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Supervisor
+
+</div>
+
+</div>
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Manager
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+    });
+
+    reportViewer.innerHTML = html;
 
 }
-
 
 /*=====================================================
-STATUS PANEL
+CUSTOMER REPORT
 =====================================================*/
 
-.status-panel{
+async function generateCustomerReport(){
 
-    position:absolute;
+    if(!reportCustomer.value){
 
-    left:50%;
+        alert("Select a customer.");
 
-    bottom:25px;
+        return;
 
-    transform:translateX(-50%);
+    }
 
-    width:95%;
+    const siteId = reportCustomer.value;
 
-    max-width:1500px;
+    const allRecords =
+    await getAttendanceRecords();
 
-    background:
+    const groupedGuards = {};
 
-    rgba(15,23,42,.82);
+    allRecords.forEach(record=>{
 
-    backdrop-filter:blur(18px);
+        if(
 
-    border-radius:25px;
+            record.siteId === siteId &&
 
-    padding:30px;
+            record.recordDate >= reportFromDate.value &&
 
-    z-index:15;
+            record.recordDate <= reportToDate.value
 
-    border:1px solid rgba(255,255,255,.15);
+        ){
+
+            const key =
+
+            `${record.guardId}_${record.employeeID}`;
+
+            if(!groupedGuards[key]){
+
+                groupedGuards[key]=[];
+
+            }
+
+            groupedGuards[key].push(record);
+
+        }
+
+    });
+
+    const guardKeys =
+    Object.keys(groupedGuards);
+
+    if(guardKeys.length===0){
+
+        reportViewer.innerHTML=`
+
+        <div class="report-placeholder">
+
+            <h3>
+
+                No Attendance Records Found
+
+            </h3>
+
+        </div>
+
+        `;
+
+        return;
+
+    }
+
+    let html="";
+
+    guardKeys.forEach(key=>{
+
+        const records =
+        groupedGuards[key];
+
+        records.sort((a,b)=>
+
+            a.recordDate.localeCompare(
+
+                b.recordDate
+
+            )
+
+        );
+
+        const guard =
+        records[0];
+
+        const totals =
+        calculateAttendanceTotals(records);
+
+        let rows="";
+
+        records.forEach(record=>{
+
+            rows+=`
+
+            <tr>
+
+                <td>${record.recordDate}</td>
+
+                <td>${formatTimestamp(record.firstClockIn)}</td>
+
+                <td>${formatTimestamp(record.lastClockOut)}</td>
+
+                <td>${record.totalWorkingHours||0}</td>
+
+                <td>${record.expectedWorkingHours||0}</td>
+
+                <td>${record.lateMinutes||0}</td>
+
+                <td>${record.overtimeMinutes||0}</td>
+
+                <td>${record.shortageMinutes||0}</td>
+
+                <td>${record.attendancePercentage||0}%</td>
+
+                <td>${record.attendanceStatus}</td>
+
+                <td>${record.siteName}</td>
+
+                <td>${record.assignedShift}</td>
+
+            </tr>
+
+            `;
+
+        });
+
+        html+=`
+
+<div class="report-page page-break">
+
+<div class="report-header">
+
+<div>
+
+<img
+src="images/logo.png"
+class="company-logo">
+
+</div>
+
+<div class="company-details">
+
+<h2>
+
+NEWLOOK SECURITY
+
+</h2>
+
+<h4>
+
+Customer Attendance Report
+
+</h4>
+
+<p>
+
+Customer :
+${guard.siteName}
+
+<br>
+
+${reportFromDate.value}
+
+-
+
+${reportToDate.value}
+
+</p>
+
+</div>
+
+<div class="generated-details">
+
+Generated By :
+
+${generatedBy}
+
+<br><br>
+
+Date :
+
+${new Date().toLocaleDateString()}
+
+<br>
+
+Time :
+
+${new Date().toLocaleTimeString()}
+
+</div>
+
+</div>
+
+<div class="guard-info">
+
+<div>
+
+<strong>Guard</strong>
+
+<br>
+
+${guard.guardName}
+
+</div>
+
+<div>
+
+<strong>Employee ID</strong>
+
+<br>
+
+${guard.employeeID}
+
+</div>
+
+<div>
+
+<strong>Department</strong>
+
+<br>
+
+${guard.department}
+
+</div>
+
+<div>
+
+<strong>Site</strong>
+
+<br>
+
+${guard.siteName}
+
+</div>
+
+</div>
+
+<table class="report-table">
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Clock In</th>
+
+<th>Clock Out</th>
+
+<th>Worked</th>
+
+<th>Expected</th>
+
+<th>Late</th>
+
+<th>Overtime</th>
+
+<th>Shortage</th>
+
+<th>Attendance %</th>
+
+<th>Status</th>
+
+<th>Site</th>
+
+<th>Shift</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${rows}
+
+</tbody>
+
+</table>
+
+<div class="report-summary">
+
+<div class="summary-card">
+
+<h4>
+
+Attendance Summary
+
+</h4>
+
+<p>Total Working Days : ${totals.totalWorkingDays}</p>
+
+<p>Present Days : ${totals.presentDays}</p>
+
+<p>Late Days : ${totals.lateDays}</p>
+
+<p>Absent Days : ${totals.absentDays}</p>
+
+<p>Total Worked Hours : ${totals.workedHours}</p>
+
+<p>Total Expected Hours : ${totals.expectedHours}</p>
+
+<p>Total Overtime : ${totals.overtimeHours}</p>
+
+<p>Total Shortage : ${totals.shortageHours}</p>
+
+<p>Average Attendance : ${totals.averageAttendance}%</p>
+
+<p>Average Hours/Day : ${totals.averageHours}</p>
+
+</div>
+
+</div>
+
+<div class="signature-section">
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Supervisor
+
+</div>
+
+</div>
+
+<div class="signature-box">
+
+<div class="signature-line">
+
+Manager
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+    });
+
+    reportViewer.innerHTML = html;
 
 }
-
-.status-header{
-
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-    margin-bottom:25px;
-
-}
-
-.status-header h2{
-
-    color:#fff;
-
-    font-size:28px;
-
-}
-
-#attendanceStatus{
-
-    padding:12px 25px;
-
-    border-radius:40px;
-
-    font-weight:700;
-
-    font-size:15px;
-
-}
-
-.waiting{
-
-    background:#334155;
-
-    color:#fff;
-
-}
-
-.success{
-
-    background:#16a34a;
-
-    color:#fff;
-
-}
-
-.error{
-
-    background:#dc2626;
-
-    color:#fff;
-
-}
-
 
 /*=====================================================
-EMPLOYEE GRID
+PRINT REPORT
 =====================================================*/
 
-.employee-grid{
+printReportBtn.addEventListener("click", () => {
 
-    display:grid;
+    if(reportViewer.innerHTML.trim() === ""){
 
-    grid-template-columns:repeat(6,1fr);
+        alert("Generate a report first.");
 
-    gap:20px;
+        return;
 
-}
+    }
 
-.info-card{
+    const printWindow = window.open("", "_blank");
 
-    background:rgba(255,255,255,.06);
+    printWindow.document.write(`
 
-    border-radius:18px;
+    <html>
 
-    padding:18px;
+    <head>
 
-}
+        <title>NEWLOOK Attendance Report</title>
 
-.info-card label{
+        <link rel="stylesheet" href="admin.css">
 
-    display:block;
+    </head>
 
-    color:#94a3b8;
+    <body>
 
-    font-size:13px;
+        ${reportViewer.innerHTML}
 
-    margin-bottom:10px;
+    </body>
 
-}
+    </html>
 
-.info-card span{
+    `);
 
-    color:#fff;
+    printWindow.document.close();
 
-    font-size:18px;
+    printWindow.focus();
 
-    font-weight:700;
+    printWindow.print();
 
-}
-
+});
 
 /*=====================================================
-MOBILE
+EXPORT PDF
 =====================================================*/
+
+exportPDFBtn.addEventListener("click", async () => {
+
+    if(reportViewer.innerHTML.trim() === ""){
+
+        alert("Generate a report first.");
+
+        return;
+
+    }
+
+    const report = reportViewer;
+
+    const originalWidth = report.style.width;
+    const originalMaxWidth = report.style.maxWidth;
+    const originalBackground = report.style.background;
+
+    report.style.width = "210mm";
+    report.style.maxWidth = "210mm";
+    report.style.background = "#ffffff";
+
+    try{
+
+        await html2pdf()
+
+        .set({
+
+            margin: 5,
+
+            filename:
+
+            `Attendance_Report_${new Date().getTime()}.pdf`,
+
+            image:{
+
+                type:"jpeg",
+
+                quality:1
+
+            },
+
+            html2canvas:{
+
+                scale:2,
+
+                useCORS:true,
+
+                scrollY:0
+
+            },
+
+            jsPDF:{
+
+                unit:"mm",
+
+                format:"a4",
+
+                orientation:"portrait"
+
+            },
+
+            pagebreak:{
+
+                mode:["css","legacy"]
+
+            }
+
+        })
+
+        .from(report)
+
+        .save();
+
+    }
+
+    finally{
+
+        report.style.width = originalWidth;
+
+        report.style.maxWidth = originalMaxWidth;
+
+        report.style.background = originalBackground;
+
+    }
+
+});
 
 /*=====================================================
-PHONE & TABLET
-SAME LAYOUT - FIT SCREEN
+EXPORT EXCEL
 =====================================================*/
 
-@media (max-width:1024px){
+exportExcelBtn.addEventListener("click", () => {
 
-    .top-bar{
-        padding:18px 20px;
+    if(reportViewer.innerHTML.trim() === ""){
+
+        alert("Generate a report first.");
+
+        return;
+
     }
 
-    .logo h1{
-        font-size:28px;
+    const tables = reportViewer.querySelectorAll("table");
+
+    if(tables.length === 0){
+
+        alert("No report data found.");
+
+        return;
+
     }
 
-    .logo span{
-        font-size:13px;
-    }
+    const workbook = XLSX.utils.book_new();
 
-    .live-clock h2{
-        font-size:26px;
-    }
+    tables.forEach((table,index)=>{
 
-    .live-clock p{
-        font-size:13px;
-    }
+        const worksheet = XLSX.utils.table_to_sheet(table);
 
-    .scanner-frame{
-        width:300px;
-        height:380px;
-    }
+        let sheetName = `Report ${index + 1}`;
 
-    .status-panel{
-        width:98%;
-        padding:18px;
-        bottom:15px;
-    }
+        const title = table
+            .closest(".report-page")
+            ?.querySelector(".guard-info strong");
 
-    .status-header h2{
-        font-size:22px;
-    }
+        if(title){
 
-    #attendanceStatus{
-        padding:10px 18px;
-        font-size:13px;
-    }
+            sheetName = `Guard ${index + 1}`;
 
-    /* KEEP 6 COLUMNS */
-    .employee-grid{
-        grid-template-columns:repeat(6,1fr);
-        gap:10px;
-    }
+        }
 
-    .info-card{
-        padding:12px;
-    }
+        XLSX.utils.book_append_sheet(
 
-    .info-card label{
-        font-size:11px;
-    }
+            workbook,
 
-    .info-card span{
-        font-size:14px;
-    }
+            worksheet,
 
-}
+            sheetName
 
-@media (max-width:768px){
+        );
 
-    /* KEEP HEADER HORIZONTAL */
-    .top-bar{
-        flex-direction:row;
-        justify-content:space-between;
-        align-items:center;
-        padding:15px;
-    }
+    });
 
-    .logo h1{
-        font-size:22px;
-    }
+    XLSX.writeFile(
 
-    .logo span{
-        font-size:11px;
-    }
+        workbook,
 
-    .live-clock{
-        text-align:right;
-    }
+        `Attendance_Report_${new Date().getTime()}.xlsx`
 
-    .live-clock h2{
-        font-size:20px;
-    }
+    );
 
-    .live-clock p{
-        font-size:11px;
-    }
-
-    .scanner-frame{
-        width:220px;
-        height:280px;
-    }
-
-    .status-panel{
-        width:98%;
-        padding:12px;
-        bottom:10px;
-    }
-
-    .status-header{
-        flex-direction:row;
-        justify-content:space-between;
-        align-items:center;
-        margin-bottom:12px;
-    }
-
-    .status-header h2{
-        font-size:18px;
-    }
-
-    #attendanceStatus{
-        font-size:12px;
-        padding:8px 14px;
-    }
-
-    /* KEEP 6 COLUMNS */
-    .employee-grid{
-        grid-template-columns:repeat(6,1fr);
-        gap:8px;
-    }
-
-    .info-card{
-        padding:10px;
-    }
-
-    .info-card label{
-        font-size:10px;
-        margin-bottom:4px;
-    }
-
-    .info-card span{
-        font-size:12px;
-    }
-
-}
+});
