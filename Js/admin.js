@@ -1,14 +1,19 @@
+import { adminService } from "../SaaS/apps/admin/service.js";
+window.NEWLOOK_ADMIN_SERVICE = adminService;
+import { registerManagementSession } from "../SaaS/appKernel.js";
 // ============================================
 // NEWLOOK SECURITY SYSTEM
 // admin.js
 // ============================================
-
-import { auth, db } from "./firebase.js";
-
+import { auth, db, companyCollection, companyDoc, getCompanyId } from "./firebase.js";
+import { normalizeRole, isSuperAdmin, isManagement } from "../SaaS/permissions.js";
+import { loadSession, clearSession } from "../SaaS/companySession.js";
 import {
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+
 
 import {
     collection,
@@ -52,14 +57,17 @@ onAuthStateChanged(auth, async(user)=>{
 
     if(!user){
 
-        location.href="login.html";
+        location.href="SaasLogin.html";
         return;
 
     }
 
     try{
 
-        const snap=await getDoc(doc(db,"admins",user.uid));
+        const session = await loadSession(user);
+        registerManagementSession("admin", session);
+        if (!session.companyId || !isManagement(session.role)) { throw new Error("Access denied."); }
+        const snap=await getDoc(doc(db,"users",user.uid));
 
         if(!snap.exists()){
 
@@ -67,37 +75,74 @@ onAuthStateChanged(auth, async(user)=>{
 
             await signOut(auth);
 
-            location.href="login.html";
+            location.href="SaasLogin.html";
 
             return;
 
         }
 
-        const admin=snap.data();
+       const admin = snap.data();
 
-        if(admin.role!=="admin"){
+/*
+|--------------------------------------------------------------------------
+| Save logged-in user information
+|--------------------------------------------------------------------------
+*/
 
-            alert("Access denied.");
+/*
+|--------------------------------------------------------------------------
+| Normalize role before creating the shared session object
+|--------------------------------------------------------------------------
+*/
+const normalizedRole = normalizeRole(admin.role);
 
-            await signOut(auth);
+window.currentUser = {
+    uid: user.uid,
+    companyId: admin.companyId || null,
+    role: normalizedRole,
+    fullName: admin.fullName || "",
+    email: admin.email || ""
+};
 
-            location.href="login.html";
+if (!isSuperAdmin(normalizedRole) && !isManagement(normalizedRole)) {
 
-            return;
+    alert("Access denied.");
 
-        }
+    await signOut(auth);
 
-        if(admin.status!=="Active"){
+    location.href = "SaasLogin.html";
 
-            alert("Account suspended.");
+    return;
 
-            await signOut(auth);
+}
 
-            location.href="login.html";
+if (admin.status && admin.status.toLowerCase() !== "active") {
 
-            return;
+    alert("Account suspended.");
 
-        }
+    await signOut(auth);
+
+    location.href = "SaasLogin.html";
+
+    return;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Redirect platform owner
+|--------------------------------------------------------------------------
+*/
+
+if (isSuperAdmin(normalizedRole)) {
+
+    location.href = "superAdmin/superadmin.html";
+
+    return;
+
+}
+
+    
 
     }
 
@@ -230,7 +275,7 @@ let selectedSiteId = null;
 
 async function generateEmployeeID(){
 
-    const snapshot = await getDocs(collection(db,"guards"));
+    const snapshot = await getDocs(adminService.collection(db,"guards"));
 
     const total = snapshot.size + 1;
 
@@ -240,6 +285,103 @@ async function generateEmployeeID(){
 
 generateEmployeeID();
 
+// ============================================
+// Check Guard Limit
+// ============================================
+
+async function canCreateGuard() {
+
+    try {
+
+        // Current company
+        const companyId = getCompanyId();
+
+        // Company document
+        const companySnap = await getDoc(
+            doc(db, "companies", companyId)
+        );
+
+        if (!companySnap.exists()) {
+
+            alert("Company not found.");
+
+            return false;
+
+        }
+
+        const company = companySnap.data();
+
+        // Company has no plan
+        if (!company.planId) {
+
+            alert("No subscription plan assigned.");
+
+            return false;
+
+        }
+
+        // Load subscription plan
+        const planSnap = await getDoc(
+            doc(db, "subscriptionPlans", company.planId)
+        );
+
+        if (!planSnap.exists()) {
+
+            alert("Subscription plan not found.");
+
+            return false;
+
+        }
+
+        const plan = planSnap.data();
+
+        // Support both legacy maxGuards and V10 guardLimit fields.
+        const guardLimit = plan.maxGuards ?? plan.guardLimit;
+
+        // Unlimited / unspecified guard limit.
+        if (guardLimit == null || Number(guardLimit) === -1) {
+            return true;
+        }
+
+        // Count guards
+        const guardsSnapshot =
+        await getDocs(
+            adminService.collection(db, "guards")
+        );
+        const securityGuardCount = guardsSnapshot.docs.filter(docSnap => {
+            const g = docSnap.data();
+            return String(g.department || "").trim().toLowerCase() === "security" &&
+                   String(g.status || "active").trim().toLowerCase() === "active";
+        }).length;
+
+        if (securityGuardCount >= Number(guardLimit)) {
+
+            alert(
+
+                `You have reached the maximum number of guards (${guardLimit}) allowed by your subscription.\n\nPlease upgrade your subscription to add more guards.`
+
+            );
+
+            return false;
+
+        }
+
+        return true;
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+        return false;
+
+    }
+
+}
+
 // ------------------------------
 // Save Guard
 // ------------------------------
@@ -247,6 +389,14 @@ generateEmployeeID();
 saveGuardBtn.addEventListener("click", async () => {
 
     try {
+
+        const allowed = await canCreateGuard();
+
+          if (!allowed) {
+
+          return;
+
+        }
 
         if (fullName.value.trim() === "") {
             alert("Enter Full Name");
@@ -280,7 +430,7 @@ saveGuardBtn.addEventListener("click", async () => {
         }
 
         const duplicate = query(
-            collection(db, "guards"),
+            adminService.collection("guards"),
             where("employeeID", "==", employeeID.value)
         );
 
@@ -291,7 +441,18 @@ saveGuardBtn.addEventListener("click", async () => {
             return;
         }
 
-        const guardRef = doc(collection(db, "guards"));
+        const normalizedDepartment = String(department.value || "").trim();
+        const normalizedRole = String(role.value || "").trim();
+        if (!/^(Security|Staff)$/i.test(normalizedDepartment)) {
+            alert("Select Security or Staff as the Department.");
+            return;
+        }
+        if (!normalizedRole) {
+            alert("Select an employee Role.");
+            return;
+        }
+
+        const guardRef = adminService.doc(adminService.collection(db, "guards"));
 
         await setDoc(guardRef, {
 
@@ -305,9 +466,9 @@ saveGuardBtn.addEventListener("click", async () => {
 
             email: emailAddress.value,
 
-            role: role.value,
+            role: normalizedRole,
 
-            department: department.value,
+            department: normalizedDepartment,
 
             siteId: siteSelect.value,
 
@@ -321,6 +482,8 @@ saveGuardBtn.addEventListener("click", async () => {
             profilePhotoBase64: capturedPhotoBase64,
 
             faceDescriptor: capturedFaceDescriptor,
+
+            companyId: getCompanyId(),
 
             createdAt: serverTimestamp()
 
@@ -338,6 +501,8 @@ saveGuardBtn.addEventListener("click", async () => {
         console.error(error);
 
     }
+
+    
 
 });
 
@@ -406,7 +571,7 @@ async function loadGuards(searchText = "", statusFilter = "") {
 
     guardTableBody.innerHTML = "";
 
-    const snapshot = await getDocs(collection(db, "guards"));
+    const snapshot = await getDocs(adminService.collection(db, "guards"));
 
     snapshot.forEach((docSnap) => {
 
@@ -531,7 +696,7 @@ async function loadGuards(searchText = "", statusFilter = "") {
 
 async function editGuard(id) {
 
-    const snap = await getDoc(doc(db, "guards", id));
+    const snap = await getDoc(adminService.doc(db, "guards", id));
 
     if (!snap.exists()) return;
 
@@ -575,7 +740,7 @@ updateGuardBtn.addEventListener("click", async () => {
 
     }
 
-    await updateDoc(doc(db, "guards", selectedGuardId), {
+    await updateDoc(adminService.doc(db, "guards", selectedGuardId), {
 
         fullName: fullName.value,
 
@@ -583,9 +748,9 @@ updateGuardBtn.addEventListener("click", async () => {
 
         email: emailAddress.value,
 
-        role: role.value,
+        role: String(role.value || "").trim().toLowerCase(),
 
-        department: department.value,
+        department: String(department.value || "").trim().toLowerCase(),
 
         siteId: siteSelect.value,
 
@@ -595,6 +760,8 @@ updateGuardBtn.addEventListener("click", async () => {
         ].text,
 
         status: status.value,
+
+        companyId: getCompanyId(),
 
         profilePhotoBase64: capturedPhotoBase64,
 
@@ -624,7 +791,7 @@ async function deleteGuard(id) {
 
     try {
 
-        await deleteDoc(doc(db, "guards", id));
+        await deleteDoc(adminService.doc(db, "guards", id));
 
         alert("Guard deleted successfully.");
 
@@ -683,9 +850,10 @@ async function toggleGuardStatus(id, currentStatus) {
             ? "Suspended"
             : "Active";
 
-        await updateDoc(doc(db, "guards", id), {
+        await updateDoc(adminService.doc(db, "guards", id), {
 
-            status: newStatus
+            status: newStatus,
+            companyId: getCompanyId()
 
         });
 
@@ -728,7 +896,7 @@ async function exportGuardsPDF() {
     pdf.text("Guard Management Report", 14, 24);
 
     const snapshot =
-        await getDocs(collection(db, "guards"));
+        await getDocs(adminService.collection(db, "guards"));
 
     const rows = [];
 
@@ -811,7 +979,7 @@ downloadPDFBtn.addEventListener("click", () => {
 async function exportGuardsExcel(){
 
     const snapshot =
-    await getDocs(collection(db,"guards"));
+    await getDocs(adminService.collection(db,"guards"));
 
     const data=[];
 
@@ -972,12 +1140,106 @@ photoInput.addEventListener("change", async () => {
 //--------------------------------------SITE MANAGEMENT------------------------------------------
 
 // ============================================
+// Check Site Limit
+// ============================================
+
+async function canCreateSite() {
+
+    try {
+
+        const companyId = getCompanyId();
+
+        const companySnap = await getDoc(
+            doc(db, "companies", companyId)
+        );
+
+        if (!companySnap.exists()) {
+
+            alert("Company not found.");
+
+            return false;
+
+        }
+
+        const company = companySnap.data();
+
+        if (!company.planId) {
+
+            alert("No subscription plan assigned.");
+
+            return false;
+
+        }
+
+        const planSnap = await getDoc(
+            doc(db, "subscriptionPlans", company.planId)
+        );
+
+        if (!planSnap.exists()) {
+
+            alert("Subscription plan not found.");
+
+            return false;
+
+        }
+
+        const plan = planSnap.data();
+
+        // Unlimited sites
+        if (plan.maxSites == null || plan.maxSites === -1) {
+
+            return true;
+
+        }
+
+        const sitesSnapshot =
+        await getDocs(
+            adminService.collection(db, "sites")
+        );
+
+        if (sitesSnapshot.size >= plan.maxSites) {
+
+            alert(
+
+                `You have reached the maximum number of sites (${plan.maxSites}) allowed by your subscription.\n\nPlease upgrade your subscription to add more sites.`
+
+            );
+
+            return false;
+
+        }
+
+        return true;
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+        return false;
+
+    }
+
+}
+
+// ============================================
 // Save Site
 // ============================================
 
 saveSiteBtn.addEventListener("click", async () => {
 
     try {
+
+        const allowed = await canCreateSite();
+
+        if (!allowed) {
+
+           return;
+
+        }
 
         if (siteName.value.trim() === "") {
 
@@ -1019,7 +1281,7 @@ saveSiteBtn.addEventListener("click", async () => {
 
         }
 
-        const siteRef = doc(collection(db, "sites"));
+        const siteRef = doc(adminService.collection(db, "sites"));
 
         await setDoc(siteRef, {
 
@@ -1034,6 +1296,7 @@ saveSiteBtn.addEventListener("click", async () => {
             longitude: Number(siteLongitude.value),
 
             radius: Number(siteRadius.value),
+            companyId: getCompanyId(),
 
             createdAt: serverTimestamp()
 
@@ -1087,7 +1350,7 @@ async function loadSites(searchText = "") {
 
     siteTableBody.innerHTML = "";
 
-    const snapshot = await getDocs(collection(db, "sites"));
+    const snapshot = await getDocs(adminService.collection(db, "sites"));
 
     snapshot.forEach((docSnap) => {
 
@@ -1173,7 +1436,7 @@ async function editSite(siteId) {
 
     try {
 
-        const snap = await getDoc(doc(db, "sites", siteId));
+        const snap = await getDoc(adminService.doc(db, "sites", siteId));
 
         if (!snap.exists()) {
 
@@ -1225,7 +1488,7 @@ updateSiteBtn.addEventListener("click", async () => {
 
         }
 
-        await updateDoc(doc(db, "sites", selectedSiteId), {
+        await updateDoc(adminService.doc(db, "sites", selectedSiteId), {
 
             siteName: siteName.value.trim(),
 
@@ -1235,7 +1498,8 @@ updateSiteBtn.addEventListener("click", async () => {
 
             longitude: Number(siteLongitude.value),
 
-            radius: Number(siteRadius.value)
+            radius: Number(siteRadius.value),
+            companyId: getCompanyId()
 
         });
 
@@ -1271,7 +1535,7 @@ async function deleteSite(siteId) {
 
     try {
 
-        await deleteDoc(doc(db, "sites", siteId));
+        await deleteDoc(adminService.doc(db, "sites", siteId));
 
         alert("Site deleted successfully.");
 
@@ -1299,7 +1563,7 @@ async function loadGuardSiteOptions() {
         '<option value="">Select Site</option>';
 
     const snapshot =
-        await getDocs(collection(db, "sites"));
+        await getDocs(adminService.collection(db, "sites"));
 
     snapshot.forEach((docSnap) => {
 
@@ -1362,7 +1626,7 @@ async function loadSiteOptions() {
         '<option value="">Select Site</option>';
 
     const snapshot =
-        await getDocs(collection(db, "sites"));
+        await getDocs(adminService.collection(db, "sites"));
 
     snapshot.forEach((docSnap) => {
 
@@ -1410,7 +1674,7 @@ saveCheckpointBtn.addEventListener("click", async () => {
 
         }
 
-        const checkpointRef = doc(collection(db, "checkpoints"));
+        const checkpointRef = adminService.doc(adminService.collection(db, "checkpoints"));
 
         const checkpointCode =
             "CP-" +
@@ -1425,6 +1689,7 @@ saveCheckpointBtn.addEventListener("click", async () => {
             checkpointName: checkpointName.value.trim(),
 
             checkpointCode,
+            companyId: getCompanyId(),
 
             createdAt: serverTimestamp()
 
@@ -1473,7 +1738,7 @@ async function loadCheckpoints() {
     checkpointTableBody.innerHTML = "";
 
     const siteSnapshot =
-        await getDocs(collection(db, "sites"));
+        await getDocs(adminService.collection(db, "sites"));
 
     const siteMap = {};
 
@@ -1486,7 +1751,7 @@ async function loadCheckpoints() {
     });
 
     const checkpointSnapshot =
-        await getDocs(collection(db, "checkpoints"));
+        await getDocs(adminService.collection(db, "checkpoints"));
 
     checkpointSnapshot.forEach(docSnap => {
 
@@ -1578,7 +1843,7 @@ async function editCheckpoint(checkpointId) {
     try {
 
         const snap = await getDoc(
-            doc(db, "checkpoints", checkpointId)
+            adminService.doc(db, "checkpoints", checkpointId)
         );
 
         if (!snap.exists()) {
@@ -1626,7 +1891,7 @@ updateCheckpointBtn.addEventListener("click", async () => {
         }
 
         await updateDoc(
-            doc(db, "checkpoints", selectedCheckpointId),
+            adminService.doc(db, "checkpoints", selectedCheckpointId),
             {
 
                 siteId: checkpointSite.value,
@@ -1669,7 +1934,7 @@ async function deleteCheckpoint(checkpointId) {
     try {
 
         await deleteDoc(
-            doc(db, "checkpoints", checkpointId)
+            adminService.doc(db, "checkpoints", checkpointId)
         );
 
         alert("Checkpoint deleted successfully.");
@@ -1695,7 +1960,7 @@ async function deleteCheckpoint(checkpointId) {
 async function generateCheckpointQR(checkpointId) {
 
     const snap = await getDoc(
-        doc(db, "checkpoints", checkpointId)
+        adminService.doc(db, "checkpoints", checkpointId)
     );
 
     if (!snap.exists()) return;
@@ -1800,11 +2065,18 @@ async function loadShiftGuards() {
         '<option value="">Select Guard</option>';
 
     const snapshot =
-        await getDocs(collection(db, "guards"));
+        await getDocs(adminService.collection(db, "guards"));
 
     snapshot.forEach((docSnap) => {
 
         const guard = docSnap.data();
+        const department = String(guard.department || "").trim().toLowerCase();
+        const status = String(guard.status || "active").trim().toLowerCase();
+
+        // Guard Operations / Shift Management are Security-department only.
+        // Staff employees remain managed in Admin and Attendance, but must not
+        // be scheduled into the Guard operational application.
+        if (department !== "security" || status !== "active") return;
 
         const option =
             document.createElement("option");
@@ -1862,7 +2134,7 @@ saveShiftBtn.addEventListener("click", async () => {
             ];
 
         const shiftRef =
-            doc(collection(db, "shifts"));
+            adminService.doc(adminService.collection(db, "shifts"));
 
         await setDoc(shiftRef, {
 
@@ -1884,6 +2156,7 @@ saveShiftBtn.addEventListener("click", async () => {
 
             siteName:
                 selectedOption.dataset.sitename,
+            companyId: getCompanyId(),
 
             shiftType: shiftType.value,
 
@@ -1980,7 +2253,7 @@ async function loadShifts(searchText = "") {
 
     shiftTableBody.innerHTML = "";
 
-    const snapshot = await getDocs(collection(db, "shifts"));
+    const snapshot = await getDocs(adminService.collection(db, "shifts"));
 
     snapshot.forEach((docSnap) => {
 
@@ -2073,7 +2346,7 @@ async function editShift(shiftId) {
     try {
 
         const snap = await getDoc(
-            doc(db, "shifts", shiftId)
+            adminService.doc(db, "shifts", shiftId)
         );
 
         if (!snap.exists()) {
@@ -2148,7 +2421,7 @@ updateShiftBtn.addEventListener("click", async () => {
             ];
 
         await updateDoc(
-            doc(db,"shifts",selectedShiftId),
+            adminService.doc(db,"shifts",selectedShiftId),
             {
 
                 guardId:
@@ -2227,7 +2500,7 @@ async function deleteShift(shiftId) {
     try {
 
         await deleteDoc(
-            doc(db, "shifts", shiftId)
+            adminService.doc(db, "shifts", shiftId)
         );
 
         alert("Shift deleted successfully.");
@@ -2297,7 +2570,7 @@ function loadPatrols(){
 
     const q = query(
 
-        collection(db,"patrols"),
+        adminService.collection(db,"patrols"),
 
         orderBy("scanTime","desc")
 
@@ -2960,7 +3233,7 @@ function loadVisitors(){
 
     const q = query(
 
-        collection(db,"visitors"),
+        adminService.collection(db,"visitors"),
 
         orderBy("createdAt","desc")
 
@@ -3544,7 +3817,7 @@ function loadIncidents(){
 
     onSnapshot(
 
-        collection(db,"incidents"),
+        adminService.collection(db,"incidents"),
 
         snapshot=>{
 
@@ -3749,7 +4022,7 @@ loadIncidents();
 window.viewIncident = async function(id){
 
     const snap =
-        await getDoc(doc(db,"incidents",id));
+        await getDoc(adminService.doc(db,"incidents",id));
 
     if(!snap.exists()) return;
 
@@ -3939,7 +4212,7 @@ window.resolveIncident = async function(id){
 
     await updateDoc(
 
-        doc(db,"incidents",id),
+        adminService.doc(db,"incidents",id),
 
         {
 
@@ -4114,7 +4387,7 @@ function loadPanics(){
 
     onSnapshot(
 
-        collection(db,"panicAlerts"),
+        adminService.collection(db,"panicAlerts"),
 
         snapshot=>{
 
@@ -4310,7 +4583,7 @@ window.viewPanic = async function(id){
 
     const snap =
         await getDoc(
-            doc(db,"panicAlerts",id)
+            adminService.doc(db,"panicAlerts",id)
         );
 
     if(!snap.exists()) return;
@@ -4510,7 +4783,7 @@ window.acknowledgePanic = async function(id){
 
     await updateDoc(
 
-        doc(db,"panicAlerts",id),
+        adminService.doc(db,"panicAlerts",id),
 
         {
 
@@ -4539,7 +4812,7 @@ window.resolvePanic = async function(id){
 
     await updateDoc(
 
-        doc(db,"panicAlerts",id),
+        adminService.doc(db,"panicAlerts",id),
 
         {
 
@@ -4772,7 +5045,7 @@ sendBroadcast.addEventListener("click",async()=>{
     }
 
     const ref =
-        doc(collection(db,"broadcasts"));
+        adminService.doc(adminService.collection(db,"broadcasts"));
 
     await setDoc(ref,{
 
@@ -4835,7 +5108,7 @@ function loadBroadcasts(){
 
     onSnapshot(
 
-        collection(db,"broadcasts"),
+        adminService.collection(db,"broadcasts"),
 
         snapshot=>{
 
@@ -4867,7 +5140,7 @@ function loadBroadcastReplies(){
 
     onSnapshot(
 
-        collection(db,"broadcastReplies"),
+        adminService.collection(db,"broadcastReplies"),
 
         snapshot=>{
 
@@ -5103,7 +5376,7 @@ renderBroadcastTable;
 window.viewBroadcast = async function(id){
 
     const snap =
-        await getDoc(doc(db,"broadcasts",id));
+        await getDoc(adminService.doc(db,"broadcasts",id));
 
     if(!snap.exists()) return;
 
@@ -5313,7 +5586,7 @@ window.archiveBroadcast = async function(id){
 
     await updateDoc(
 
-        doc(db,"broadcasts",id),
+        adminService.doc(db,"broadcasts",id),
 
         {
 
@@ -5342,7 +5615,7 @@ window.deleteBroadcast = async function(id){
 
     await deleteDoc(
 
-        doc(db,"broadcasts",id)
+        adminService.doc(db,"broadcasts",id)
 
     );
 
@@ -5373,8 +5646,8 @@ window.adminReplyBroadcast = async function(broadcastId){
 
 
  const ref =
- doc(
- collection(
+ adminService.doc(
+ adminService.collection(
  db,
  "broadcastReplies"
  )
@@ -5463,7 +5736,7 @@ LISTENER
 function listenToShiftRecords() {
 
     onSnapshot(
-        collection(db, "shiftRecords"),
+        adminService.collection(db, "shiftRecords"),
         (snapshot) => {
 
             shiftRecords = [];
@@ -5678,6 +5951,8 @@ function viewShiftRecord(id) {
 function closeShiftModal() {
     shiftModal.style.display = "none";
 }
+window.closeShiftModal = closeShiftModal;
+document.getElementById("closeShiftModalButton")?.addEventListener("click", closeShiftModal);
 
 window.addEventListener("click", function (event) {
     if (event.target === shiftModal) {
@@ -5732,7 +6007,7 @@ async function completeShift(id) {
     try {
 
         await updateDoc(
-            doc(db, "shiftRecords", id),
+            adminService.doc(db, "shiftRecords", id),
             {
                 status: "COMPLETED",
                 shiftCompleted: true,
@@ -5868,11 +6143,12 @@ async function loadReportGuards(){
     reportGuard.innerHTML =
         `<option value="">Select Guard</option>`;
 
-    const snapshot = await getDocs(collection(db,"guards"));
+    const snapshot = await getDocs(adminService.collection(db,"guards"));
 
     snapshot.forEach(doc=>{
 
         const guard = doc.data();
+        if (String(guard.department || "").trim().toLowerCase() !== "security") return;
 
         reportGuard.innerHTML += `
       <option
@@ -5892,7 +6168,7 @@ async function loadReportCustomers(){
     reportCustomer.innerHTML =
         `<option value="">Select Customer</option>`;
 
-    const snapshot = await getDocs(collection(db,"sites"));
+    const snapshot = await getDocs(adminService.collection(db,"sites"));
 
     snapshot.forEach(doc=>{
 
@@ -5980,7 +6256,7 @@ async function generateSingleGuardReport(){
    const selectedEmployeeID =
     selectedOption.dataset.employee;
 
-    const snapshot = await getDocs(collection(db,"shiftRecords"));
+    const snapshot = await getDocs(adminService.collection(db,"shiftRecords"));
 
     const records = [];
 
@@ -6410,7 +6686,7 @@ function calculateReportTotals(records){
 
 async function generateAllGuardsReport(){
 
-    const snapshot = await getDocs(collection(db,"shiftRecords"));
+    const snapshot = await getDocs(adminService.collection(db,"shiftRecords"));
 
     const groupedGuards = {};
 
@@ -6718,7 +6994,7 @@ async function generateCustomerReport(){
 
     }
 
-    const snapshot = await getDocs(collection(db,"shiftRecords"));
+    const snapshot = await getDocs(adminService.collection(db,"shiftRecords"));
 
     const groupedGuards = {};
 
@@ -7180,7 +7456,7 @@ function listenToAttendance(){
 
     onSnapshot(
 
-        collection(db,"attendance"),
+        adminService.collection(db,"attendance"),
 
         snapshot=>{
 
@@ -7673,7 +7949,7 @@ async function deleteAttendanceRecord(id){
     try{
 
         await deleteDoc(
-            doc(db,"attendance",id)
+            adminService.doc(db,"attendance",id)
         );
 
         alert("Attendance record deleted successfully.");
@@ -7763,7 +8039,7 @@ function getAttendanceActionBadge(action){
 
 async function exportAttendancePDF(employeeID){
 
-    const snapshot = await getDocs(collection(db,"attendance"));
+    const snapshot = await getDocs(adminService.collection(db,"attendance"));
 
     const records = [];
 
@@ -7951,7 +8227,7 @@ async function exportAttendancePDF(employeeID){
 
 async function exportAttendanceExcel(employeeID){
 
-    const snapshot = await getDocs(collection(db,"attendance"));
+    const snapshot = await getDocs(adminService.collection(db,"attendance"));
 
     const grouped = {};
 
@@ -8098,21 +8374,21 @@ window.exportAttendanceExcel = exportAttendanceExcel;
 
 const attendanceCollection =
 
-    collection(
+    adminService.collection(
         db,
         "attendanceRecords"
     );
 
 const staffCollection =
 
-    collection(
+    adminService.collection(
         db,
         "guards"
     );
 
 const customerCollection =
 
-    collection(
+    adminService.collection(
         db,
         "sites"
     );
@@ -9348,7 +9624,7 @@ function buildStaffReportHeader() {
 
                     <h2>
 
-                        NEWLOOK SECURITY SYSTEM
+                        Y O U R I SECURITY SYSTEM
 
                     </h2>
 
@@ -10183,3 +10459,96 @@ async function exportStaffReportExcel() {
     );
 
 }
+
+/* =========================================================
+   NEWLOOK V10 CUSTOMER NOTIFICATIONS + SUPPORT BRIDGE
+   Non-invasive extension: preserves existing Admin structure.
+========================================================= */
+(() => {
+  const customerId = () => getCompanyId();
+  const safeText = v => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  const ensureCustomerTools = () => {
+    const menu = document.querySelector('.menu');
+    if (!menu || menu.querySelector('[data-section="notifications"]')) return;
+    const make = (section,label) => { const li=document.createElement('li'); li.dataset.section=section; li.innerHTML=`<i class="fas fa-${section==='notifications'?'bell':'life-ring'}"></i> ${label}`; menu.appendChild(li); return li; };
+    const n=make('notifications','Notifications'), sp=make('support','Support');
+    const notifications=document.createElement('section'); notifications.id='notifications'; notifications.className='page'; notifications.innerHTML=`<header class="staff-report-header"><div class="staff-report-company"><img src="assets/images/logo.png" alt="Company Logo"><div><h1>Notifications</h1><p>Company announcements and platform alerts</p></div></div></header><h2><i class="fas fa-bell"></i> NOTIFICATIONS</h2><div id="customerNotificationsList"></div>`;
+    const support=document.createElement('section'); support.id='support'; support.className='page'; support.innerHTML=`<header class="staff-report-header"><div class="staff-report-company"><img src="assets/images/logo.png" alt="Company Logo"><div><h1>Support</h1><p>Contact NEWLOOK platform support</p></div></div></header><h2><i class="fas fa-life-ring"></i> SUPPORT</h2><div class="guard-form"><div class="form-row"><div class="form-group"><label>Subject</label><input id="supportSubject" maxlength="120"></div><div class="form-group"><label>Priority</label><select id="supportPriority"><option>normal</option><option>high</option><option>urgent</option></select></div></div><div class="form-group"><label>Message</label><textarea id="supportMessage" rows="5" maxlength="4000"></textarea></div><div class="button-row"><button id="createSupportTicket" class="action-btn action-btn-primary">Create Ticket</button><button id="refreshSupportTickets" class="action-btn action-btn-secondary">Refresh</button></div></div><div id="supportTicketsList"></div>`;
+    document.querySelector('.main')?.append(notifications,support);
+    n.addEventListener('click',()=>showSection('notifications')); sp.addEventListener('click',()=>showSection('support'));
+    document.getElementById('createSupportTicket')?.addEventListener('click',createTicket);
+    document.getElementById('refreshSupportTickets')?.addEventListener('click',loadTickets);
+  };
+  const showSection = id => { document.querySelectorAll('.menu li').forEach(x=>x.classList.toggle('active',x.dataset.section===id)); document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active-page',x.id===id)); if(id==='notifications')loadNotifications(); if(id==='support')loadTickets(); };
+  const loadNotifications = async()=>{ const list=document.getElementById('customerNotificationsList'); if(!list)return; try { const snap=await getDocs(query(adminService.collection(db,'notifications'),orderBy('createdAt','desc'),limit(50))); list.innerHTML=snap.empty?'<div class="card"><p>No notifications.</p></div>':snap.docs.map(d=>{const x=d.data();return `<div class="card" style="margin:12px 0"><strong>${safeText(x.title||'Notification')}</strong><p>${safeText(x.message||'')}</p><small>${safeText(x.type||'info')} · ${safeText(x.createdAt?.toDate?.()?.toLocaleString?.()||'')}</small></div>`}).join(''); } catch(e){list.innerHTML=`<div class="card"><p>${safeText(e.message)}</p></div>`;} };
+  const loadTickets = async()=>{ const list=document.getElementById('supportTicketsList'); if(!list)return; try { const snap=await getDocs(query(adminService.collection(db,'supportTickets'),orderBy('createdAt','desc'),limit(30))); list.innerHTML=snap.empty?'<div class="card"><p>No support tickets yet.</p></div>':snap.docs.map(d=>{const x=d.data();return `<div class="card" style="margin:12px 0"><strong>${safeText(x.subject||'Untitled')}</strong><span class="badge badge-secondary">${safeText(x.status||'open')}</span><p>${safeText(x.message||'')}</p><small>Priority: ${safeText(x.priority||'normal')} · ${safeText(x.createdAt?.toDate?.()?.toLocaleString?.()||'')}</small></div>`}).join(''); } catch(e){list.innerHTML=`<div class="card"><p>${safeText(e.message)}</p></div>`;} };
+  const createTicket = async()=>{ const companyId=customerId(), subject=document.getElementById('supportSubject')?.value.trim(), message=document.getElementById('supportMessage')?.value.trim(), priority=document.getElementById('supportPriority')?.value||'normal'; if(!companyId||!subject||!message)return alert('Enter a subject and message.'); try { const ref=adminService.doc(adminService.collection(db,'supportTickets')); await setDoc(ref,{ticketId:ref.id,companyId,companyName:window.currentUser?.companyName||'',subject,message,priority,status:'open',createdBy:auth.currentUser?.uid||'',createdByEmail:auth.currentUser?.email||'',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}); const nref=adminService.doc(adminService.collection(db,'notifications')); await setDoc(nref,{notificationId:nref.id,title:'Support ticket created',message:`Support ticket: ${subject}`,type:'support',read:false,createdAt:serverTimestamp()}); alert('Support ticket created.'); document.getElementById('supportSubject').value=''; document.getElementById('supportMessage').value=''; await loadTickets(); } catch(e){alert(e.message||'Unable to create support ticket.');} };
+  window.NEWLOOK_CUSTOMER_TOOLS={loadNotifications,loadTickets,showSection};
+  ensureCustomerTools();
+})();
+
+/* =========================================================
+   NEWLOOK V10 ENTERPRISE COMPANY CONTROL EXTENSION
+   Adds higher-level administration sections without changing
+   existing Guard / Attendance / Payroll source contracts.
+========================================================= */
+(() => {
+  const safe = v => String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const role = () => normalizeRole(window.currentUser?.role);
+  const cid = () => getCompanyId();
+  const allowed = p => {
+    const r=role();
+    if(p==='users'||p==='settings') return r==='company_admin';
+    if(p==='payroll') return ['company_admin','operations_manager'].includes(r);
+    return ['company_admin','operations_manager','supervisor'].includes(r);
+  };
+  const add = (id,label,icon='layer-group') => {
+    if(!allowed(id) || document.querySelector(`[data-section="${id}"]`)) return null;
+    const li=document.createElement('li'); li.dataset.section=id; li.innerHTML=`<i class="fas fa-${icon}"></i> ${label}`;
+    document.querySelector('.menu')?.appendChild(li);
+    li.onclick=()=>window.NEWLOOK_CUSTOMER_TOOLS?.showSection(id);
+    return li;
+  };
+  const addPage=(id,html)=>{ if(document.getElementById(id))return; const s=document.createElement('section');s.id=id;s.className='page';s.innerHTML=html;document.querySelector('.main')?.appendChild(s); };
+  const loadCollection = async (name, max=100) => {
+    // users/{uid} is the platform identity source of truth; it is NOT a tenant subcollection.
+    if (name === 'users') {
+      const snap = await getDocs(query(collection(db,'users'), where('companyId','==',cid()), limit(max)));
+      return snap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+    const snap=await getDocs(query(adminService.collection(db,name),limit(max)));
+    return snap.docs.map(d=>({id:d.id,...d.data()}));
+  };
+  const renderUsers=async()=>{
+    const el=document.getElementById('enterpriseUsersList'); if(!el)return;
+    try{const rows=await loadCollection('users',200);el.innerHTML=rows.length?`<div class="table"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${safe(x.fullName||x.displayName||'—')}</td><td>${safe(x.email||'—')}</td><td>${safe(normalizeRole(x.role))}</td><td>${safe(x.status||'active')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="card"><p>No company users found.</p></div>'}catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
+  };
+  const renderOperations=async()=>{
+    const el=document.getElementById('enterpriseOperationsList'); if(!el)return;
+    try{
+      const [guards,sites,attendance,patrols,incidents,visitors,panics]=await Promise.all([
+        loadCollection('guards',200),loadCollection('sites',200),loadCollection('attendance',200),loadCollection('patrols',200),loadCollection('incidents',200),loadCollection('visitors',200),loadCollection('panicAlerts',200)
+      ]);
+      el.innerHTML=`<section class="grid"><div class="card metric"><div class="label">Guards</div><div class="value">${guards.length}</div></div><div class="card metric"><div class="label">Sites</div><div class="value">${sites.length}</div></div><div class="card metric"><div class="label">Attendance</div><div class="value">${attendance.length}</div></div><div class="card metric"><div class="label">Patrols</div><div class="value">${patrols.length}</div></div><div class="card metric"><div class="label">Incidents</div><div class="value">${incidents.length}</div></div><div class="card metric"><div class="label">Visitors</div><div class="value">${visitors.length}</div></div><div class="card metric"><div class="label">Panic events</div><div class="value">${panics.length}</div></div></section><section class="card"><h2>Operational control</h2><p class="muted">Live operational collections are monitored here. Payroll source collections are intentionally excluded.</p></section>`;
+    }catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
+  };
+  const renderDocuments=async()=>{
+    const el=document.getElementById('enterpriseDocumentsList');if(!el)return;
+    try{const rows=await loadCollection('documents',200);el.innerHTML=rows.length?`<div class="table"><table><thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Updated</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${safe(x.name||x.title||x.fileName||x.id)}</strong></td><td>${safe(x.type||'document')}</td><td>${safe(x.status||'active')}</td><td>${safe(x.updatedAt?.toDate?.()?.toLocaleString?.()||x.createdAt?.toDate?.()?.toLocaleString?.()||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="card"><p>No company documents found.</p></div>'}catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
+  };
+  const build=()=>{
+    const menu=document.querySelector('.menu');if(!menu)return;
+    const defs=[['users','Users & Access','users'],['operations','Operations Control','gauge-high'],['payroll','Payroll','money-check-dollar'],['documents','Documents','folder-open'],['settings','Company Settings','sliders']];
+    defs.forEach(d=>add(...d));
+    addPage('users',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Users & Access</h1><p>Company identity, roles and account status.</p></div></div></header><h2><i class="fas fa-users"></i> USERS & ACCESS</h2><div id="enterpriseUsersList"></div>`);
+    addPage('operations',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Operations Control</h1><p>Enterprise operational overview.</p></div></div></header><h2><i class="fas fa-gauge-high"></i> OPERATIONS CONTROL</h2><div id="enterpriseOperationsList"></div>`);
+    addPage('payroll',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Payroll</h1><p>Open the dedicated payroll processing environment.</p></div></div></header><h2><i class="fas fa-money-check-dollar"></i> PAYROLL</h2><div class="card"><p>Payroll processing uses the dedicated Payroll module and preserves <strong>shiftRecords</strong> and <strong>attendanceRecords</strong> as payroll source collections.</p><a class="action-btn action-btn-primary" href="payroll.html" style="display:inline-block;text-decoration:none">Open Payroll</a></div>`);
+    addPage('documents',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Documents</h1><p>Company and operational document registry.</p></div></div></header><h2><i class="fas fa-folder-open"></i> DOCUMENTS</h2><div id="enterpriseDocumentsList"></div>`);
+    addPage('settings',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Company Settings</h1><p>Administrative configuration domains.</p></div></div></header><h2><i class="fas fa-sliders"></i> COMPANY SETTINGS</h2><section class="grid three"><div class="card"><h3>Company Profile</h3><p class="muted">Identity, contact and branding.</p></div><div class="card"><h3>Roles & Permissions</h3><p class="muted">Company user access controls.</p></div><div class="card"><h3>Attendance</h3><p class="muted">Operational attendance configuration.</p></div><div class="card"><h3>Payroll</h3><p class="muted">Rates, overtime and payroll policies.</p></div><div class="card"><h3>Notifications</h3><p class="muted">Alerts and company communications.</p></div><div class="card"><h3>Security</h3><p class="muted">Devices, access and audit controls.</p></div></section>`);
+    document.querySelectorAll('.menu li[data-section="users"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('users');renderUsers()});
+    document.querySelectorAll('.menu li[data-section="operations"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('operations');renderOperations()});
+    document.querySelectorAll('.menu li[data-section="documents"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('documents');renderDocuments()});
+  };
+  build();
+  window.NEWLOOK_ENTERPRISE_CONTROL={renderUsers,renderOperations,renderDocuments};
+})();

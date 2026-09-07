@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NEWLOOK Device Setup</title>
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}body{margin:0;background:#f4f6f9;min-height:100vh;display:grid;place-items:center}.card{width:min(460px,92vw);background:#fff;padding:30px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12)}h1{margin-top:0;color:#0b3d91}p{color:#555;line-height:1.5}label{display:block;margin:18px 0 7px;font-weight:700}input,button{width:100%;padding:13px;border-radius:8px;font-size:16px}input{border:1px solid #ccc;text-transform:uppercase;letter-spacing:1px}button{border:0;background:#0b3d91;color:#fff;font-weight:700;cursor:pointer;margin-top:18px}button:disabled{opacity:.6;cursor:not-allowed}.status{margin-top:15px;min-height:24px;font-weight:700}.success{color:#198754}.error{color:#dc3545}.meta{background:#f5f7fb;padding:12px;border-radius:8px;margin-top:15px;display:none}
+</style>
+    <link rel="stylesheet" href="SaaS/actionSystem.css">
+</head>
+<body>
+<div class="card">
+<h1>NEWLOOK Device Setup</h1>
+<p>This setup is required once for a Guard or Attendance device. The guard does not need a username or password.</p>
+<label for="setupCode">Device Setup Code</label>
+<input id="setupCode" autocomplete="off" placeholder="Enter setup code">
+<button id="activateBtn" class="action-btn action-btn-secondary">Activate Device</button>
+<div id="deviceMeta" class="meta"></div>
+<div id="status" class="status"></div>
+</div>
+<script type="module" src="Js/deviceSetup.js"></script>
+    <script src="SaaS/actionManager.js"></script>
+</body>
+</html>

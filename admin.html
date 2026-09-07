@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Y O U R I Smart Security Management Solutions - Admin</title>
+    <title>NEWLOOK Security SaaS — Company Operations</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="Css/admin.css">
+    <link rel="stylesheet" href="SaaS/actionSystem.css">
+<link rel="stylesheet" href="SaaS/customerSaaSControl.css">
 </head>
 
 <body>
@@ -72,6 +78,12 @@
                 Analytics
             </li>
 
+            <li data-section="devices">
+                <a href="device-registration.html" style="color:inherit;text-decoration:none;display:block;">
+                    Device Management
+                </a>
+            </li>
+
             <li data-section="broadcast">
                 Broadcast
             </li>
@@ -90,7 +102,7 @@
 
             <h2>Administrator Dashboard</h2>
 
-            <button id="logoutBtn">
+            <button id="logoutBtn" class="action-btn action-btn-secondary">
                 Logout
             </button>
 
@@ -106,7 +118,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -152,7 +164,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -290,19 +302,19 @@
 
         <div class="button-row">
 
-            <button id="openCameraBtn">Open Camera</button>
+            <button id="openCameraBtn" class="action-btn action-btn-secondary">Open Camera</button>
 
-            <button id="captureBtn">Capture</button>
+            <button id="captureBtn" class="action-btn action-btn-secondary">Capture</button>
 
-            <button id="uploadPhotoBtn">Upload Photo</button>
+            <button id="uploadPhotoBtn" class="action-btn action-btn-secondary">Upload Photo</button>
 
             <input type="file" id="photoInput" accept="image/*" hidden>
 
-            <button id="saveGuardBtn">Save Guard</button>
+            <button id="saveGuardBtn" class="action-btn action-btn-secondary">Save Guard</button>
 
-            <button id="updateGuardBtn">Update</button>
+            <button id="updateGuardBtn" class="action-btn action-btn-secondary">Update</button>
 
-            <button id="clearGuardBtn">Clear</button>
+            <button id="clearGuardBtn" class="action-btn action-btn-secondary">Clear</button>
 
         </div>
 
@@ -327,9 +339,9 @@
 
         </select>
 
-        <button id="downloadPDFBtn">PDF</button>
+        <button id="downloadPDFBtn" class="action-btn action-btn-secondary">PDF</button>
 
-        <button id="downloadExcelBtn">Excel</button>
+        <button id="downloadExcelBtn" class="action-btn action-btn-secondary">Excel</button>
 
     </div>
 
@@ -381,7 +393,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -467,19 +479,19 @@
 
         <div class="button-row">
 
-            <button type="button" id="saveSiteBtn">
+            <button type="button" id="saveSiteBtn" class="action-btn action-btn-secondary">
 
                 Save Site
 
             </button>
 
-            <button type="button" id="updateSiteBtn">
+            <button type="button" id="updateSiteBtn" class="action-btn action-btn-secondary">
 
                 Update Site
 
             </button>
 
-            <button type="button" id="clearSiteBtn">
+            <button type="button" id="clearSiteBtn" class="action-btn action-btn-secondary">
 
                 Clear
 
@@ -540,7 +552,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -606,19 +618,19 @@
 
     <div class="button-row">
 
-        <button id="saveCheckpointBtn">
+        <button id="saveCheckpointBtn" class="action-btn action-btn-secondary">
 
             Save Checkpoint
 
         </button>
 
-        <button id="updateCheckpointBtn">
+        <button id="updateCheckpointBtn" class="action-btn action-btn-secondary">
 
             Update
 
         </button>
 
-        <button id="clearCheckpointBtn">
+        <button id="clearCheckpointBtn" class="action-btn action-btn-secondary">
 
             Clear
 
@@ -668,7 +680,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -818,19 +830,19 @@
 
         <div class="button-row">
 
-            <button id="saveShiftBtn">
+            <button id="saveShiftBtn" class="action-btn action-btn-secondary">
 
                 Save Shift
 
             </button>
 
-            <button id="updateShiftBtn">
+            <button id="updateShiftBtn" class="action-btn action-btn-secondary">
 
                 Update
 
             </button>
 
-            <button id="clearShiftBtn">
+            <button id="clearShiftBtn" class="action-btn action-btn-secondary">
 
                 Clear
 
@@ -897,7 +909,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -995,7 +1007,7 @@
         type="date"
         id="shiftDateFilter">
 
-    <button id="clearShiftFilters">
+    <button id="clearShiftFilters" class="action-btn action-btn-secondary">
 
         Clear
 
@@ -1037,7 +1049,7 @@
 
     <div class="modal-content shift-modal">
 
-        <span class="close" onclick="closeShiftModal()">&times;</span>
+        <span class="close" id="closeShiftModalButton">&times;</span>
 
         <h2>Shift Record Details</h2>
 
@@ -1056,7 +1068,7 @@
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -1126,25 +1138,25 @@
             type="date"
             id="reportToDate">
 
-        <button id="generateReport">
+        <button id="generateReport" class="action-btn action-btn-secondary">
 
             Generate Report
 
         </button>
 
-        <button id="printReport">
+        <button id="printReport" class="action-btn action-btn-secondary">
 
             Print
 
         </button>
 
-        <button id="exportPDF">
+        <button id="exportPDF" class="action-btn action-btn-secondary">
 
             Export PDF
 
         </button>
 
-        <button id="exportExcel">
+        <button id="exportExcel" class="action-btn action-btn-secondary">
 
             Export Excel
 
@@ -1248,7 +1260,7 @@
             type="date"
             id="attendanceDateFilter">
 
-        <button id="attendanceClearFilters">
+        <button id="attendanceClearFilters" class="action-btn action-btn-secondary">
 
             Clear Filters
 
@@ -1310,7 +1322,7 @@ ATTENDANCE DETAILS MODAL
 
             <span
                 class="close"
-                onclick="closeAttendanceModal()">
+                id="closeAttendanceModalButton">
                 &times;
             </span>
 
@@ -1340,7 +1352,7 @@ ATTENDANCE DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -1520,7 +1532,7 @@ ATTENDANCE DETAILS MODAL
 
                 id="staffReportGenerateBtn"
 
-                class="primary-btn">
+                class="primary-btn action-btn action-btn-secondary">
 
                 <i class="fas fa-chart-line"></i>
 
@@ -1528,7 +1540,7 @@ ATTENDANCE DETAILS MODAL
 
             </button>
 
-            <button id="staffReportPrintBtn">
+            <button id="staffReportPrintBtn" class="action-btn action-btn-secondary">
 
                 <i class="fas fa-print"></i>
 
@@ -1536,7 +1548,7 @@ ATTENDANCE DETAILS MODAL
 
             </button>
 
-            <button id="staffReportExportPdfBtn">
+            <button id="staffReportExportPdfBtn" class="action-btn action-btn-secondary">
 
                 <i class="fas fa-file-pdf"></i>
 
@@ -1544,7 +1556,7 @@ ATTENDANCE DETAILS MODAL
 
             </button>
 
-            <button id="staffReportExportExcelBtn">
+            <button id="staffReportExportExcelBtn" class="action-btn action-btn-secondary">
 
                 <i class="fas fa-file-excel"></i>
 
@@ -1609,7 +1621,7 @@ ATTENDANCE DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -1658,7 +1670,7 @@ PATROL MANAGEMENT
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -1745,19 +1757,19 @@ PATROL MANAGEMENT
             type="date"
             id="patrolDateFilter">
 
-        <button id="clearPatrolFilter">
+        <button id="clearPatrolFilter" class="action-btn action-btn-secondary">
 
             Clear
 
         </button>
 
-        <button id="exportPatrolExcel">
+        <button id="exportPatrolExcel" class="action-btn action-btn-secondary">
 
             Export Excel
 
         </button>
 
-        <button id="exportPatrolPDF">
+        <button id="exportPatrolPDF" class="action-btn action-btn-secondary">
 
             Export PDF
 
@@ -1850,7 +1862,7 @@ PATROL DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -1962,7 +1974,7 @@ PATROL DETAILS MODAL
             id="visitorDateFilter"
         >
 
-        <button id="clearVisitorFilter">
+        <button id="clearVisitorFilter" class="action-btn action-btn-secondary">
 
             Clear
 
@@ -1974,13 +1986,13 @@ PATROL DETAILS MODAL
 
     <div class="action-buttons">
 
-        <button id="exportVisitorPDF">
+        <button id="exportVisitorPDF" class="action-btn action-btn-secondary">
 
             Export PDF
 
         </button>
 
-        <button id="exportVisitorExcel">
+        <button id="exportVisitorExcel" class="action-btn action-btn-secondary">
 
             Export Excel
 
@@ -2057,7 +2069,7 @@ PATROL DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -2199,7 +2211,7 @@ PATROL DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -2345,7 +2357,7 @@ PATROL DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -2397,7 +2409,7 @@ PATROL DETAILS MODAL
 
             <img
 
-                id="staffReportLogo"
+                class="staff-report-logo"
 
                 src="assets/images/logo.png"
 
@@ -2514,7 +2526,7 @@ PATROL DETAILS MODAL
 
     </div>
 
-    <button id="sendBroadcast">
+    <button id="sendBroadcast" class="action-btn action-btn-secondary">
 
         Send Broadcast
 
@@ -2623,7 +2635,7 @@ PATROL DETAILS MODAL
 
         <div id="qrContainer"></div>
 
-        <button id="downloadQrBtn">
+        <button id="downloadQrBtn" class="action-btn action-btn-secondary">
 
             Download QR
 
@@ -2652,5 +2664,10 @@ PATROL DETAILS MODAL
 <script type="module" src="Js/firebase.js"></script>
 <script type="module" src="Js/auth.js"></script>
 <script type="module" src="Js/admin.js"></script>
+<script type="module" src="Js/adminSaaSUI.js"></script>
+    <script src="SaaS/actionManager.js"></script>
+    <script type="module" src="SaaS/customerSaaSControl.js"></script>
+    <script type="module" src="SaaS/companyAdminBridge.js"></script>
+<script type="module" src="SaaS/enterpriseExpansion.js"></script>
 </body>
 </html>

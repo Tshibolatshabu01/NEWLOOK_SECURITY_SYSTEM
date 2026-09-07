@@ -1,17 +1,22 @@
+import { attendanceService } from "../SaaS/apps/attendance/service.js";
+window.NEWLOOK_ATTENDANCE_SERVICE = attendanceService;
+import { bootDeviceApp } from "../SaaS/appKernel.js";
+//====================================================
+// DEVICE SECURITY
+//====================================================
+import { ensureDeviceAuthorized } from "./deviceAuth.js";
+
 //====================================================
 // FIREBASE
 //====================================================
-
-import {
-    db
-} from "./firebase.js";
-
+import { auth, db, companyCollection, companyDoc, getCompanyId } from "./firebase.js";
 import {
 
     collection,
     getDocs,
     getDoc,
     addDoc,
+    setDoc,
     doc,
     query,
     where,
@@ -19,6 +24,27 @@ import {
 
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
+const DEVICE_READY = await ensureDeviceAuthorized("attendance.html", "attendance");
+if (!DEVICE_READY) {
+    throw new Error("NEWLOOK: Device setup required.");
+}
+bootDeviceApp("attendance", "attendance", window.newlookDeviceContext || null);
+
+//====================================================
+// DEBUG
+//====================================================
+
+const DEBUG = false;
+
+function debugLog(...args){
+
+    if(DEBUG){
+
+        console.log(...args);
+
+    }
+
+}
 //====================================================
 // SPEAK MESSAGE
 //====================================================
@@ -91,6 +117,10 @@ let cameraStarting = false;
 
 let verificationLocked = false;
 let lastEmployeeID = null;
+
+let lastVerificationTime = 0;
+
+const VERIFICATION_COOLDOWN = 15000;
 //====================================================
 // LIVE CLOCK
 //====================================================
@@ -149,8 +179,7 @@ async function loadFaceModels(){
 
     await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_PATH);
 
-    console.log("Face models loaded.");
-
+    debugLog("Face models loaded.");
 }
 
 
@@ -163,8 +192,7 @@ async function loadBodyModel(){
     bodyModel =
     await cocoSsd.load();
 
-    console.log("Body model loaded.");
-
+    debugLog("body loaded.");
 }
 
 
@@ -185,7 +213,7 @@ async function startCamera(){
     try{
 
         if(cameraStarting){
-            console.log("Camera already starting");
+           debugLog("camera started.");
             return;
         }
 
@@ -239,7 +267,7 @@ async function startCamera(){
 
         });
 
-        console.log(
+        debugLog(
             "Camera started:",
             video.videoWidth,
             video.videoHeight
@@ -327,10 +355,10 @@ async function initializeAttendance(){
 
         setStatus("Waiting for body...");
 
-        console.log("Starting body detection...");
+        debugLog("Starting body detection...");
         detectBody();
 
-        console.log("Attendance ready.");
+        debugLog("Attendance ready.");
 
     }
 
@@ -354,10 +382,10 @@ initializeAttendance();
 
 async function detectBody(){
 
-    console.log("detectBody running");
+    debugLog("detectBody running");
 
     if(!modelsLoaded){
-        console.log("Models not loaded");
+        debugLog("Models not loaded");
         return;
     }
 
@@ -372,7 +400,7 @@ async function detectBody(){
 
         const predictions =
         await bodyModel.detect(video);
-        console.log("Predictions:", predictions);
+        debugLog("Predictions:", predictions);
 
         const personFound =
         predictions.some(item => item.class === "person");
@@ -388,7 +416,7 @@ async function detectBody(){
                     "success"
                 );
 
-                console.log("Person detected.");
+                debugLog("Person detected.");
 
             }
 
@@ -420,7 +448,7 @@ async function detectBody(){
                     "Waiting for body..."
                 );
 
-                console.log("No person.");
+                debugLog("No person.");
 
              }
 
@@ -461,7 +489,44 @@ function clearDisplay(){
 }
 
 // --------------------------------------------FACE VERIFICATION-------------------------------------------------------
+function calculateDistance(lat1,lon1,lat2,lon2){
 
+    const R = 6371000;
+
+    const dLat = (lat2-lat1)*Math.PI/180;
+
+    const dLon = (lon2-lon1)*Math.PI/180;
+
+    const a =
+
+        Math.sin(dLat/2)**2 +
+
+        Math.cos(lat1*Math.PI/180)
+
+        *
+
+        Math.cos(lat2*Math.PI/180)
+
+        *
+
+        Math.sin(dLon/2)**2;
+
+    const c =
+
+        2 *
+
+        Math.atan2(
+
+            Math.sqrt(a),
+
+            Math.sqrt(1-a)
+
+        );
+
+    return R*c;
+
+}
+debugLog("calculateDistance loaded");
 //====================================================
 // FACE VERIFICATION
 //====================================================
@@ -522,7 +587,7 @@ async function verifyFace(){
 
 
 
-        console.log(
+        debugLog(
             "Face descriptor created"
         );
 
@@ -540,20 +605,27 @@ async function verifyFace(){
 
         if(employee){
 
-            console.log(
+            debugLog(
                 "Employee verified",
                 employee
             );
 
-            if(lastEmployeeID === employee.employeeID){
+            const now = Date.now();
 
-            processing = false;
-            return;
+        if(
+             lastEmployeeID === employee.employeeID &&
+             (now - lastVerificationTime) < VERIFICATION_COOLDOWN
+            ){
+
+              processing = false;
+               return;
 
             }
 
-           verificationLocked = true;
-           lastEmployeeID = employee.employeeID;
+             lastVerificationTime = now;
+
+              verificationLocked = true;
+             lastEmployeeID = employee.employeeID;
 
 
             employeeDisplay.textContent =
@@ -639,9 +711,9 @@ async function findMatchingStaff(inputDescriptor){
 
 
     const staffSnapshot =
-    await getDocs(
-        collection(db,"guards")
-    );
+ await getDocs(
+    attendanceService.collection(db,"guards")
+ );
 
 
     let bestMatch = null;
@@ -655,8 +727,11 @@ async function findMatchingStaff(inputDescriptor){
 
         const staff =
         docSnap.data();
+        const department = String(staff.department || "").trim().toLowerCase();
+        const status = String(staff.status || "active").trim().toLowerCase();
 
-
+        // Attendance/face clock is for active Staff-department employees only.
+        if (department !== "staff" || status !== "active") return;
 
         if(
             !staff.faceDescriptor
@@ -755,48 +830,6 @@ async function getCurrentLocation(){
 }
 
 //====================================================
-// CALCULATE DISTANCE
-//====================================================
-
-function calculateDistance(lat1,lon1,lat2,lon2){
-
-    const R = 6371000;
-
-    const dLat = (lat2-lat1)*Math.PI/180;
-
-    const dLon = (lon2-lon1)*Math.PI/180;
-
-    const a =
-
-        Math.sin(dLat/2)**2 +
-
-        Math.cos(lat1*Math.PI/180)
-
-        *
-
-        Math.cos(lat2*Math.PI/180)
-
-        *
-
-        Math.sin(dLon/2)**2;
-
-    const c =
-
-        2 *
-
-        Math.atan2(
-
-            Math.sqrt(a),
-
-            Math.sqrt(1-a)
-
-        );
-
-    return R*c;
-
-}
-
-//====================================================
 // VERIFY GPS
 //====================================================
 
@@ -822,7 +855,7 @@ async function checkLocation(employee){
 
         await getDoc(
 
-            doc(
+            attendanceService.doc(
 
                 db,
 
@@ -894,7 +927,7 @@ async function checkLocation(employee){
 
 
 
-        console.log(
+        debugLog(
 
             "GPS Verified"
 
@@ -924,19 +957,13 @@ async function checkLocation(employee){
 
     catch(error){
 
-        console.error(error);
+    console.error("Location verification error:", error);
 
-        setStatus(
+    processing = false;
 
-            "GPS unavailable",
+    verificationLocked = false;
 
-            "error"
-
-        );
-
-        processing=false;
-
-    }
+}
 
 }
 
@@ -984,7 +1011,7 @@ async function verifyDepartment(employee){
 
     }
 
-    console.log(
+    debugLog(
 
         "Department Verified"
 
@@ -1012,20 +1039,141 @@ async function verifyDepartment(employee){
 let todayAttendance = [];
 
 //====================================================
-// LOAD TODAY ATTENDANCE
+// SHIFT DATE UTILITIES
+// Supports both Day and Overnight Shifts
 //====================================================
 
-async function loadTodayAttendance(employeeID){
+function formatDateOnly(date){
 
-    const today =
-    new Date()
+    return date
     .toISOString()
     .split("T")[0];
 
+}
+
+//====================================================
+// DETERMINE WHETHER SHIFT CROSSES MIDNIGHT
+//====================================================
+
+function isOvernightShift(shift){
+
+    if(!shift){
+        return false;
+    }
+
+    return shift.startTime > shift.endTime;
+
+}
+
+//====================================================
+// GET SHIFT DATE
+//
+// Day Shift
+// 07:00 -> 19:00
+// Check In  = today
+// Check Out = today
+//
+// Night Shift
+// 19:00 -> 07:00
+// Check In  = today
+// Check Out = previous day
+//====================================================
+
+function getShiftDate(now, shift){
+
+    const attendanceDate = new Date(now);
+
+    if(!shift){
+
+        return formatDateOnly(attendanceDate);
+
+    }
+
+    if(!isOvernightShift(shift)){
+
+        return formatDateOnly(attendanceDate);
+
+    }
+
+    const currentMinutes =
+        now.getHours() * 60 +
+        now.getMinutes();
+
+    const endParts =
+    shift.endTime.split(":");
+
+    const endMinutes =
+        Number(endParts[0]) * 60 +
+        Number(endParts[1]);
+
+    // After midnight but before scheduled end
+    // belongs to yesterday's shift
+
+    if(currentMinutes <= endMinutes){
+
+        attendanceDate.setDate(
+            attendanceDate.getDate() - 1
+        );
+
+    }
+
+    return formatDateOnly(attendanceDate);
+
+}
+
+//====================================================
+// BUILD SHIFT START DATETIME
+//====================================================
+
+function buildShiftStartDate(shiftDate, shift){
+
+    return new Date(
+        `${shiftDate}T${shift.startTime}`
+    );
+
+}
+
+//====================================================
+// BUILD SHIFT END DATETIME
+//====================================================
+
+function buildShiftEndDate(shiftDate, shift){
+
+    const end = new Date(
+        `${shiftDate}T${shift.endTime}`
+    );
+
+    if(isOvernightShift(shift)){
+
+        end.setDate(
+            end.getDate() + 1
+        );
+
+    }
+
+    return end;
+
+}
+
+//====================================================
+// LOAD TODAY ATTENDANCE
+//====================================================
+
+//====================================================
+// LOAD SHIFT ATTENDANCE
+//====================================================
+
+async function loadTodayAttendance(employeeID, shift){
+
+    const shiftDate =
+    getShiftDate(
+        new Date(),
+        shift
+    );
 
     const q = query(
 
-        collection(db,"attendance"),
+        attendanceService.collection(db,"attendance"),
 
         where(
             "employeeID",
@@ -1034,31 +1182,41 @@ async function loadTodayAttendance(employeeID){
         ),
 
         where(
-            "date",
+            "shiftDate",
             "==",
-            today
+            shiftDate
         )
 
     );
 
-
     const snapshot =
     await getDocs(q);
 
-
-
     todayAttendance = [];
-
-
 
     snapshot.forEach(doc=>{
 
-        todayAttendance.push(
-            doc.data()
-        );
+        todayAttendance.push({
+
+            id:doc.id,
+
+            ...doc.data()
+
+        });
 
     });
 
+    todayAttendance.sort((a,b)=>{
+
+        const first =
+        a.timestamp?.seconds || 0;
+
+        const second =
+        b.timestamp?.seconds || 0;
+
+        return first - second;
+
+    });
 
     return todayAttendance;
 
@@ -1103,173 +1261,305 @@ function getNextAction(records){
 // SAVE ATTENDANCE EVENT
 //====================================================
 
+//====================================================
+// SAVE ATTENDANCE EVENT
+//====================================================
+
 async function saveAttendanceEvent(employee){
 
-    await checkForNewDay(employee);
-
-    const records =
-    await loadTodayAttendance(
-        employee.employeeID
-    );
+    try{
 
 
+        const records =
+        await loadTodayAttendance(
+       employee.employeeID,
+       await getAssignedShift(employee.id)
+       );
 
-    const action =
-    getNextAction(records);
+       const action =
+       getNextAction(records);
 
+       const now =
+       new Date();
 
-
-    const now =
-    new Date();
-
-
-
-    await addDoc(
-
-        collection(
-            db,
-            "attendance"
-        ),
-
-        {
-
-            employeeID:
-            employee.employeeID,
+       const shift =
+       await getAssignedShift(employee.id);
 
 
-            guardId:
-            employee.id,
+        const shiftDate =
+        getShiftDate(
+            now,
+            shift
+        );
 
 
-            fullName:
-            employee.fullName,
+
+        debugLog(
+            "Attendance Action:",
+            action
+        );
 
 
-            department:
-            employee.department,
-
-            role:
-            employee.role || "",
-
-
-            siteId:
-            employee.siteId,
+        debugLog(
+            "Shift Date:",
+            shiftDate
+        );
 
 
-            siteName:
-            employee.siteName,
+
+        await addDoc(
+
+            attendanceService.collection(
+                db,
+                "attendance"
+            ),
+
+            {
 
 
-            action:
+                employeeID:
+                employee.employeeID,
 
 
-            action,
-
-            status:
-            action==="IN"
-            ?
-            "ON DUTY"
-            :
-            "OFF DUTY",
+                guardId:
+                employee.id,
 
 
-            date:
-
-            now
-            .toISOString()
-            .split("T")[0],
+                fullName:
+                employee.fullName,
 
 
-            timestamp:
+                department:
+                employee.department,
 
-            serverTimestamp()
+
+                role:
+                employee.role || "",
+
+
+                siteId:
+                employee.siteId,
+
+
+                siteName:
+                employee.siteName,
+
+
+                shiftId:
+                shift?.id || "",
+
+
+                shiftType:
+                shift?.shiftType || "",
+
+
+                scheduledStart:
+                shift?.startTime || "",
+
+
+                scheduledEnd:
+                shift?.endTime || "",
+
+
+
+                action:
+                action,
+
+
+
+                status:
+
+                action==="IN"
+
+                ?
+
+                "ON DUTY"
+
+                :
+
+                "OFF DUTY",
+
+
+
+                date:
+
+                now
+                .toISOString()
+                .split("T")[0],
+
+
+
+                shiftDate:
+                shiftDate,
+
+
+
+                timestamp:
+
+                serverTimestamp()
+
+
+            }
+
+        );
+
+
+
+        debugLog(
+            "Attendance event saved"
+        );
+
+
+
+        // AFTER saving OUT event,
+        // calculate the complete shift
+
+        if(action === "OUT"){
+
+
+            await updateAttendanceRecord(employee);
+
 
         }
 
-    );
+
+
+        if(action==="IN"){
+
+
+            statusDisplay.textContent =
+            "ON DUTY";
+
+
+            setStatus(
+                "Checked IN",
+                "success"
+            );
+
+
+            speakMessage(
+            `Welcome ${employee.fullName}. Thank you. You have successfully checked in.`
+            );
+
+
+        }
+
+
+        else{
+
+
+            statusDisplay.textContent =
+            "OFF DUTY";
+
+
+            setStatus(
+                "Checked OUT",
+                "success"
+            );
+
+
+            speakMessage(
+            `Goodbye ${employee.fullName}. Thank you. You have successfully checked out.`
+            );
+
+
+        }
 
 
 
-    if(action==="IN"){
+        document
+        .getElementById(
+            "verificationDisplay"
+        )
+        .textContent =
+        records.length + 1;
 
 
-        statusDisplay.textContent =
-        "ON DUTY";
+
+        processing = false;
 
 
-        setStatus(
-            "Checked IN",
-            "success"
+    }
+
+
+    catch(error){
+
+
+        console.error(
+            "Save attendance error:",
+            error
         );
-      
-        speakMessage(
-        `Welcome ${employee.fullName}. Thank you. You have successfully checked in.`
-     );
+
+
+        processing = false;
+
+
+    }
+
+}
+// -------------------------------------ATTENDANCERECORD------------------------------------------------------------
+
+
+
+//====================================================
+// LOAD SHIFT ATTENDANCE
+//====================================================
+
+async function getPreviousDayAttendance(
+    employeeID,
+    shiftDate
+){
+
+    let q;
+
+
+    if(shiftDate){
+
+        q = query(
+
+            attendanceService.collection(db,"attendance"),
+
+            where(
+                "employeeID",
+                "==",
+                employeeID
+            ),
+
+            where(
+                "shiftDate",
+                "==",
+                shiftDate
+            )
+
+        );
 
     }
 
     else{
 
+        q = query(
 
-        statusDisplay.textContent =
-        "OFF DUTY";
+            attendanceService.collection(db,"attendance"),
 
+            where(
+                "employeeID",
+                "==",
+                employeeID
+            )
 
-        setStatus(
-            "Checked OUT",
-            "success"
         );
-
-        speakMessage(
-        `Goodbye ${employee.fullName}. Thank you. You have successfully checked out.`
-     );
-
 
     }
 
-
-
-    document
-    .getElementById(
-        "verificationDisplay"
-    )
-    .textContent =
-    records.length+1;
-
-  processing = false;
-
-}
-
-// -------------------------------------ATTENDANCERECORD------------------------------------------------------------
-
-
-
-async function getPreviousDayAttendance(employeeID,date){
-
-    const q = query(
-
-        collection(db,"attendance"),
-
-        where(
-            "employeeID",
-            "==",
-            employeeID
-        ),
-
-        where(
-            "date",
-            "==",
-            date
-        )
-
-    );
 
 
     const snapshot =
     await getDocs(q);
 
 
-    let records=[];
+
+    let records = [];
+
 
 
     snapshot.forEach(doc=>{
@@ -1285,51 +1575,64 @@ async function getPreviousDayAttendance(employeeID,date){
     });
 
 
+
     records.sort((a,b)=>{
 
-        return a.timestamp.seconds -
-        b.timestamp.seconds;
+
+        const first =
+        a.timestamp?.seconds || 0;
+
+
+        const second =
+        b.timestamp?.seconds || 0;
+
+
+        return first-second;
+
 
     });
+
 
 
     return records;
 
 }
 
-function getFirstClockIn(records){
+function getFirstClockIn(records) {
 
+    if (!records || records.length === 0) {
+        return null;
+    }
 
-    const first =
-    records.find(
-        r=>r.action==="IN"
-    );
+    const sorted = [...records].sort((a, b) => {
 
+        const first = a.timestamp?.seconds || 0;
+        const second = b.timestamp?.seconds || 0;
 
-    return first || null;
+        return first - second;
+
+    });
+
+    return sorted.find(record => record.action === "IN") || null;
 
 }
 
+function getLastClockOut(records) {
 
-function getLastClockOut(records){
-
-
-    const outs =
-    records.filter(
-        r=>r.action==="OUT"
-    );
-
-
-    if(outs.length===0){
-
+    if (!records || records.length === 0) {
         return null;
-
     }
 
+    const sorted = [...records].sort((a, b) => {
 
-    return outs[
-        outs.length-1
-    ];
+        const first = a.timestamp?.seconds || 0;
+        const second = b.timestamp?.seconds || 0;
+
+        return second - first;
+
+    });
+
+    return sorted.find(record => record.action === "OUT") || null;
 
 }
 
@@ -1451,91 +1754,348 @@ function calculateAllWorkingPeriods(records){
 
 async function createAttendanceRecord(employee, records){
 
+    try{
 
-    const first =
-    getFirstClockIn(records);
+        debugLog("========== createAttendanceRecord START ==========");
 
-    if(!first){
+        const first = getFirstClockIn(records);
 
-    return;
+        debugLog("First Clock In:", first);
 
- }
+        if(!first){
+            debugLog("No first clock in.");
+            return;
+        }
 
-    const shift =
-    await getAssignedShift(
-    employee.id
-    );
+        const shift = await getAssignedShift(employee.id);
 
-    if(!shift){
+        debugLog("Shift:", shift);
 
-    console.log("No shift assigned.");
+        if(!shift){
+            debugLog("No shift assigned.");
+            return;
+        }
 
-    return;
+        let lateMinutes = calculateLateMinutes(first, shift);
 
- }
+        let attendanceStatus = getAttendanceStatus(
+            lateMinutes,
+            shift
+        );
 
-    let lateMinutes = 0;
+        debugLog("Late Minutes:", lateMinutes);
+        debugLog("Attendance Status:", attendanceStatus);
 
- let attendanceStatus =
- "Unknown";
+        const last = getLastClockOut(records);
 
+        debugLog("Last Clock Out:", last);
 
- if(shift){
+        if(!last){
+            debugLog("No clock out found.");
+            return;
+        }
 
+        const work = calculateAllWorkingPeriods(records);
 
-    lateMinutes =
-    calculateLateMinutes(
-        first,
-        shift
-    );
+        debugLog("Working Time:", work);
 
+        const expected = calculateExpectedHours(shift);
 
-    attendanceStatus =
-    getAttendanceStatus(
-        lateMinutes,
-        shift
-    );
+        debugLog("Expected Hours:", expected);
 
+        const comparison = compareWorkingHours(
+            work.totalMinutes,
+            expected.minutes
+        );
 
- }
+        debugLog("Comparison:", comparison);
 
+        const shiftDate =
+            records[0].shiftDate ||
+            records[0].date;
 
-    const last =
-    getLastClockOut(records);
+        let attendancePercentage = 0;
 
+        if(expected.minutes > 0){
 
+            attendancePercentage = Math.min(
+                100,
+                Number(
+                    (
+                        work.totalMinutes /
+                        expected.minutes
+                    ) * 100
+                ).toFixed(2)
+            );
 
-    if(!first || !last){
+        }
 
-        return;
+        debugLog("Attendance %:", attendancePercentage);
+
+        const data = {
+
+            assignedShift:
+            shift?.shiftType || "",
+
+            scheduledStart:
+            shift?.startTime || "",
+
+            scheduledEnd:
+            shift?.endTime || "",
+
+            graceMinutes:
+            shift?.graceMinutes || "0",
+
+            lateMinutes,
+
+            attendanceStatus,
+
+            recordDate:
+            shiftDate,
+
+            shiftDate,
+
+            firstClockIn:
+            first.timestamp,
+
+            lastClockOut:
+            last.timestamp,
+
+            employeeID:
+            employee.employeeID,
+
+            guardId:
+            employee.id,
+
+            guardName:
+            employee.fullName,
+
+            department:
+            employee.department,
+
+            siteId:
+            employee.siteId,
+
+            siteName:
+            employee.siteName,
+
+            attendancePeriods:
+            work.periods,
+
+            totalWorkingMinutes:
+            work.totalMinutes,
+
+            totalWorkingHours:
+            work.totalHours,
+
+            expectedWorkingMinutes:
+            expected.minutes,
+
+            expectedWorkingHours:
+            expected.hours,
+
+            workStatus:
+            comparison.status,
+
+            overtimeMinutes:
+            comparison.overtimeMinutes,
+
+            shortageMinutes:
+            comparison.shortageMinutes,
+
+            attendancePercentage,
+
+            expectedHours:
+            expected.hours,
+
+            actualHours:
+            work.totalHours,
+
+            lunchTakenMinutes:0,
+
+            lunchExceededMinutes:0,
+
+            attendanceRecords:records,
+
+            payrollReady:true,
+
+            createdAt:
+            serverTimestamp()
+
+        };
+
+        debugLog("Document to save:");
+        debugLog(data);
+
+        const docRef = await addDoc(
+            attendanceService.collection(db, "attendanceRecords"),
+            data
+        );
+
+        debugLog("SUCCESS!");
+        debugLog("Document ID:", docRef.id);
+
+    }
+    catch(error){
+            companyId: getCompanyId(),
+
+        console.error("createAttendanceRecord ERROR:");
+        console.error(error);
 
     }
 
+}
+//====================================================
+// CHECK IF NEW DAY STARTED
+//====================================================
 
+//====================================================
+// CHECK IF SHIFT RECORD SHOULD BE GENERATED
+//====================================================
 
-    const work =
-    calculateAllWorkingPeriods(records);
+//====================================================
+// CHECK IF SHIFT RECORD SHOULD BE GENERATED
+//====================================================
 
-    const expected =
-    calculateExpectedHours(shift);
+async function updateAttendanceRecord(employee){
 
-    const comparison =
-    compareWorkingHours(
-    work.totalMinutes,
-    expected.minutes
- );
+    try{
 
- //====================================================
- // ATTENDANCE PERCENTAGE
- //====================================================
+        console.log("========== UPDATE ATTENDANCE RECORD ==========");
 
- let attendancePercentage = 0;
+        const shift =
+        await getAssignedShift(employee.id);
 
- if(expected.minutes > 0){
+        if(!shift){
 
-    attendancePercentage = Math.min(
+            console.log("No assigned shift");
 
-        100,
+            return;
+
+        }
+
+        const shiftDate =
+        getShiftDate(
+            new Date(),
+            shift
+        );
+
+        const records =
+        await getPreviousDayAttendance(
+
+            employee.employeeID,
+
+            shiftDate
+
+        );
+
+        console.log("Today's Attendance:", records);
+
+        if(records.length === 0){
+
+            console.log("No attendance events");
+
+            return;
+
+        }
+
+        const first =
+        getFirstClockIn(records);
+
+        const last =
+        getLastClockOut(records);
+
+        if(!first){
+
+            console.log("Missing IN");
+
+            return;
+
+        }
+
+        if(!last){
+
+            console.log("Missing OUT");
+
+            return;
+
+        }
+
+        await saveAttendanceRecord(
+
+            employee,
+
+            shift,
+
+            records,
+
+            shiftDate
+
+        );
+
+        console.log("Attendance Record Updated");
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Update Attendance Record Error:",
+            error
+        );
+
+    }
+
+}
+
+async function saveAttendanceRecord(
+
+    employee,
+
+    shift,
+
+    records,
+
+    shiftDate
+
+){
+
+    try{
+
+        const first =
+        getFirstClockIn(records);
+
+        const last =
+        getLastClockOut(records);
+
+        if(!first || !last){
+
+            console.log("Cannot build summary");
+
+            return;
+
+        }
+
+        const work =
+        calculateAllWorkingPeriods(records);
+
+        const expected =
+        calculateExpectedHours(shift);
+
+        const comparison =
+        compareWorkingHours(
+
+            work.totalMinutes,
+
+            expected.minutes
+
+        );
+
+        const attendancePercentage =
+
+        expected.minutes > 0
+
+        ?
 
         Number(
 
@@ -1549,222 +2109,143 @@ async function createAttendanceRecord(employee, records){
 
         ).toFixed(2)
 
-    );
+        :
 
- }
+        0;
 
+        const recordID =
+        `${employee.employeeID}_${shiftDate}`;
 
+        await setDoc(
 
-    await addDoc(
+            attendanceService.doc(
 
-        collection(
-            db,
-            "attendanceRecords"
-        ),
+                db,
 
-        {
+                "attendanceRecords",
 
-            assignedShift:
-            shift?.shiftType || "",
+                recordID
 
+            ),
 
-            scheduledStart:
-            shift?.startTime || "",
+            {
+                companyId: getCompanyId(),
 
+                employeeID:
+                employee.employeeID,
 
-            scheduledEnd:
-            shift?.endTime || "",
+                guardId:
+                employee.id,
 
+                guardName:
+                employee.fullName,
 
-            graceMinutes:
-            shift?.graceMinutes ||"0",
+                department:
+                employee.department,
 
+                role:
+                employee.role || "",
 
-            lateMinutes:
-            lateMinutes,
+                siteId:
+                employee.siteId,
 
+                siteName:
+                employee.siteName,
 
-            attendanceStatus:
-            attendanceStatus,
-           recordDate:
-           records[0].date,
+                shiftDate:
+                shiftDate,
 
-           firstClockIn:
-           first.timestamp,
+                firstClockIn:
+                first.timestamp,
 
-           lastClockOut:
-           last.timestamp,
+                lastClockOut:
+                last.timestamp,
 
+                attendancePeriods:
+                work.periods,
 
-            employeeID:
-            employee.employeeID,
+                totalWorkingMinutes:
+                work.totalMinutes,
 
+                totalWorkingHours:
+                work.totalHours,
 
-            guardId:
-            employee.id,
+                expectedWorkingMinutes:
+                expected.minutes,
 
+                expectedWorkingHours:
+                expected.hours,
 
-            guardName:
-            employee.fullName,
+                workStatus:
+                comparison.status,
 
+                overtimeMinutes:
+                comparison.overtimeMinutes,
 
-            department:
-            employee.department,
+                shortageMinutes:
+                comparison.shortageMinutes,
 
+                attendancePercentage:
+                Number(attendancePercentage),
 
-            siteId:
-            employee.siteId,
+                payrollReady:
+                true,
 
+                createdAt:
+                serverTimestamp(),
 
-            siteName:
-            employee.siteName,
+                updatedAt:
+                serverTimestamp()
 
+            },
 
-            attendancePeriods:
-            work.periods,
+            {
 
+                merge:true
 
-            totalWorkingMinutes:
-            work.totalMinutes,
+            }
 
+        );
 
-            totalWorkingHours:
-            work.totalHours,
-
-
-            expectedWorkingMinutes:
-            expected.minutes,
-
-
-            expectedWorkingHours:
-            expected.hours,
-
-
-            workStatus:
-            comparison.status,
-
-
-            overtimeMinutes:
-            comparison.overtimeMinutes,
-
-
-            shortageMinutes:
-            comparison.shortageMinutes,
-
-            attendancePercentage:
-            attendancePercentage,
-
-            expectedHours:
-            expected.hours,
-
-            actualHours:
-            work.totalHours,
-
-            lunchTakenMinutes:0,
-
-            lunchExceededMinutes:0,
-
-        
-
-
-            attendanceRecords:
-            records,
-
-            payrollReady:true,
-            createdAt:
-            serverTimestamp()
-
-
-        }
-
-    );
-
-
-    console.log(
-        "Shift record created"
-    );
-
-
-}
-
-//====================================================
-// CHECK IF NEW DAY STARTED
-//====================================================
-
-async function checkForNewDay(employee){
-
-    const yesterday =
-
-    new Date(
-        Date.now()-86400000
-    )
-    .toISOString()
-    .split("T")[0];
-
-
-
-    const exists =
-
-    await attendanceRecordExists(
-
-        employee.employeeID,
-
-        yesterday
-
-    );
-
-
-
-    if(exists){
-
-        return;
+        console.log(
+            "Attendance Summary Saved"
+        );
 
     }
 
+    catch(error){
 
-
-    const records =
-
-    await getPreviousDayAttendance(
-
-        employee.employeeID,
-
-        yesterday
-
-    );
-
-
-
-    if(records.length===0){
-
-        return;
+        console.error(
+            "Save Attendance Record Error:",
+            error
+        );
 
     }
 
-
-
-    await createAttendanceRecord(
-
-        employee,
-
-        records
-
-    );
-
 }
-async function attendanceRecordExists(employeeID,date){
+//====================================================
+// CHECK WHETHER ATTENDANCE RECORD ALREADY EXISTS
+//====================================================
+
+async function attendanceRecordExists(employeeID, shiftDate){
 
     const q = query(
 
-        collection(db,"attendanceRecords"),
+        attendanceService.collection(db,"attendanceRecords"),
 
-        where("employeeID","==",employeeID),
+        where(
+            "employeeID",
+            "==",
+            employeeID
+        ),
 
-        where("recordDate","==",date)
+        where(
+            "shiftDate",
+            "==",
+            shiftDate
+        )
 
     );
-
-
 
     const snapshot =
     await getDocs(q);
@@ -1782,7 +2263,7 @@ async function getAssignedShift(guardId){
 
     const q = query(
 
-        collection(db,"shifts"),
+        attendanceService.collection(db,"shifts"),
 
         where(
             "guardId",
@@ -1824,56 +2305,46 @@ async function getAssignedShift(guardId){
 // LATE CALCULATION
 //====================================================
 
-function calculateLateMinutes(
- clockIn,
- shift
- ){
+//====================================================
+// LATE CALCULATION
+//====================================================
+
+function calculateLateMinutes(clockIn, shift){
 
     if(!shift){
-
-    return 0;
-
- }
-
+        return 0;
+    }
 
     const actual =
-    new Date(clockIn.timestamp.seconds*1000);
-
-
-
-    const date =
-    actual.toISOString()
-    .split("T")[0];
-
-
-
-    const scheduled =
     new Date(
-        `${date}T${shift.startTime}`
+        clockIn.timestamp.seconds * 1000
     );
 
+    const shiftDate =
+    clockIn.shiftDate ||
+    formatDateOnly(actual);
 
+    const scheduled =
+    buildShiftStartDate(
+        shiftDate,
+        shift
+    );
 
     const difference =
     Math.floor(
+
         (
             actual -
             scheduled
         ) / 60000
+
     );
 
-
-
     if(difference <= 0){
-
         return 0;
-
     }
 
-
-
     return difference;
-
 
 }
 
@@ -1912,66 +2383,76 @@ shift
 // CALCULATE EXPECTED SHIFT HOURS
 //====================================================
 
+//====================================================
+// CALCULATE EXPECTED SHIFT HOURS
+//====================================================
+
 function calculateExpectedHours(shift){
 
     if(!shift){
 
-    return{
+        return{
 
-        minutes:0,
+            minutes:0,
 
-        hours:"0.00"
+            hours:"0.00"
 
-    };
+        };
 
- }
+    }
 
-
-    const start =
+    let start =
     new Date(
         `2000-01-01T${shift.startTime}`
     );
 
-
-    const end =
+    let end =
     new Date(
         `2000-01-01T${shift.endTime}`
     );
 
+    // Overnight shift
+
+    if(end <= start){
+
+        end.setDate(
+            end.getDate() + 1
+        );
+
+    }
 
     let minutes =
     Math.floor(
-        (end-start)/60000
+
+        (
+            end -
+            start
+        ) / 60000
+
     );
 
-
-
-    // Remove lunch time
-
-    minutes -=
-    Number(
+    minutes -= Number(
         shift.lunchMinutes || 0
     );
 
+    if(minutes < 0){
 
+        minutes = 0;
 
-    return {
+    }
 
+    return{
 
         minutes:minutes,
 
-
         hours:
         (
-            minutes/60
+            minutes / 60
         ).toFixed(2)
-
 
     };
 
-
 }
-
 //====================================================
 // COMPARE WORK RESULT
 //====================================================
@@ -2059,4 +2540,38 @@ expectedMinutes
 }
 
 
+let guardsCache = [];
 
+let guardsLoaded = false;
+
+async function loadGuardsCache(){
+
+    if(guardsLoaded){
+
+        return;
+
+    }
+
+    const snapshot =
+    await getDocs(attendanceService.collection(db,"guards"));
+
+    guardsCache = [];
+
+    snapshot.forEach(docSnap=>{
+
+        const employee = docSnap.data();
+        if (String(employee.department || "").trim().toLowerCase() !== "staff") return;
+        if (String(employee.status || "active").trim().toLowerCase() !== "active") return;
+        guardsCache.push({
+
+            id:docSnap.id,
+
+            ...employee
+
+        });
+
+    });
+
+    guardsLoaded = true;
+
+}

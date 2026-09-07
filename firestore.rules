@@ -1,0 +1,252 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function role() { return hasProfile() ? profile().role : ''; }
+    function activeUser() { return hasProfile() && profile().status in ['active','Active']; }
+    function superAdmin() { return activeUser() && role() in ['super_admin','superAdmin']; }
+    function companyMember(c) { return activeUser() && profile().companyId == c; }
+    function companyAdmin(c) { return companyMember(c) && role() in ['company_admin','companyAdmin']; }
+    function operationsManager(c) { return companyMember(c) && role() in ['operations_manager','manager']; }
+    function supervisor(c) { return companyMember(c) && role() in ['supervisor','team_leader']; }
+    function companyActive(c) {
+      let x = get(/databases/$(database)/documents/companies/$(c)).data;
+      return x.status in ['active','Active'] && (!('subscriptionStatus' in x) || x.subscriptionStatus in ['active','ACTIVE','trial','TRIAL']) && (!('subscriptionEndsAt' in x) || x.subscriptionEndsAt == null || x.subscriptionEndsAt > request.time);
+    }
+    function planActive(c) {
+      let x = get(/databases/$(database)/documents/companies/$(c)).data;
+      return ('planId' in x) && x.planId != null && exists(/databases/$(database)/documents/subscriptionPlans/$(x.planId)) && get(/databases/$(database)/documents/subscriptionPlans/$(x.planId)).data.status in ['active','ACTIVE'];
+    }
+    function tenantActive(c) { return companyActive(c) && planActive(c); }
+    function deviceMember(c) {
+      return signedIn() && exists(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)) && get(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)).data.authUid == request.auth.uid && get(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)).data.companyId == c && get(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)).data.status == 'active' && tenantActive(c);
+    }
+    function guardDevice(c) {
+      return deviceMember(c) && get(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)).data.deviceType == 'guard';
+    }
+    function attendanceDevice(c) {
+      return deviceMember(c) && get(/databases/$(database)/documents/companies/$(c)/devices/$(request.auth.uid)).data.deviceType == 'attendance';
+    }
+    function operationalRead(c) { return companyMember(c) && tenantActive(c); }
+    function managerWrite(c) { return companyAdmin(c) || operationsManager(c); }
+    function supervisorWrite(c) { return companyAdmin(c) || operationsManager(c) || supervisor(c); }
+    function periodWritable(c, key) {
+      return !exists(/databases/$(database)/documents/companies/$(c)/payrollPeriods/$(key)) || get(/databases/$(database)/documents/companies/$(c)/payrollPeriods/$(key)).data.status in ['Open','Correction','open','correction'];
+    }
+    function periodLocked(c, key) {
+      return exists(/databases/$(database)/documents/companies/$(c)/payrollPeriods/$(key)) && (get(/databases/$(database)/documents/companies/$(c)/payrollPeriods/$(key)).data.locked == true || get(/databases/$(database)/documents/companies/$(c)/payrollPeriods/$(key)).data.status in ['Locked','locked']);
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || superAdmin() || (companyMember(resource.data.companyId) && resource.data.companyId == profile().companyId));
+      allow create: if superAdmin() || (companyAdmin(request.resource.data.companyId) && request.resource.data.role in ['operations_manager','supervisor'] && request.resource.data.status in ['active','Active'] && request.resource.data.createdBy == request.auth.uid);
+      allow update: if superAdmin() || (request.auth.uid == uid && request.resource.data.companyId == resource.data.companyId && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','displayName','phone','photoURL','updatedAt'])) || (companyAdmin(resource.data.companyId) && resource.data.companyId == request.resource.data.companyId && resource.data.role in ['operations_manager','manager','supervisor','team_leader'] && request.resource.data.role == resource.data.role && request.resource.data.companyId == profile().companyId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','fullName','displayName','phone','photoURL','updatedAt']));
+      allow delete: if superAdmin();
+    }
+
+    match /companies/{c} {
+      allow read: if superAdmin() || operationalRead(c);
+      allow create: if superAdmin();
+      allow update: if superAdmin() || (companyAdmin(c) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','companyName','contactEmail','phone','address','logo','settings','updatedAt']));
+      allow delete: if superAdmin();
+
+      match /devices/{deviceId} {
+        allow read: if superAdmin() || companyAdmin(c) || operationsManager(c) || (signedIn() && request.auth.uid == deviceId && deviceMember(c));
+        allow create: if superAdmin() || (companyAdmin(c) && request.resource.data.companyId == c) || (operationsManager(c) && request.resource.data.companyId == c) || (signedIn() && request.auth.uid == deviceId && getAfter(/databases/$(database)/documents/deviceRegistrations/$(request.resource.data.registrationCode)).data.status == 'claimed' && getAfter(/databases/$(database)/documents/deviceRegistrations/$(request.resource.data.registrationCode)).data.authUid == request.auth.uid && request.resource.data.companyId == c && request.resource.data.siteId == getAfter(/databases/$(database)/documents/deviceRegistrations/$(request.resource.data.registrationCode)).data.siteId && request.resource.data.deviceType == getAfter(/databases/$(database)/documents/deviceRegistrations/$(request.resource.data.registrationCode)).data.deviceType && request.resource.data.deviceType in ['guard','attendance']);
+        allow update: if superAdmin() || (companyAdmin(c) && request.resource.data.companyId == c && resource.data.companyId == c) || (operationsManager(c) && request.resource.data.companyId == c && resource.data.companyId == c) || (signedIn() && request.auth.uid == deviceId && deviceMember(c) && request.resource.data.companyId == resource.data.companyId);
+        allow delete: if superAdmin() || companyAdmin(c);
+      }
+      match /auditLogs/{id} {
+        allow read: if superAdmin() || operationalRead(c);
+        allow create: if superAdmin() || (operationalRead(c) && request.resource.data.performedBy == request.auth.uid && request.resource.data.createdAt == request.time);
+        allow update, delete: if false;
+      }
+      match /payroll/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && periodWritable(c, request.resource.data.payrollKey));
+        allow update: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && resource.data.companyId == c && (
+          periodWritable(c, resource.data.payrollKey) ||
+          (periodLocked(c, resource.data.payrollKey) && resource.data.payrollStatus == 'Finalized' && request.resource.data.payrollStatus == resource.data.payrollStatus && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus','paidAt','paidBy','paymentBatchId','paymentBatchNumber','bankPaymentReference','updatedAt','updatedBy']))
+        ));
+        allow delete: if superAdmin() || (tenantActive(c) && companyAdmin(c) && periodWritable(c, resource.data.payrollKey));
+      }
+      match /salaryProfiles/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create, update, delete: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+      }
+      match /payrollPeriods/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+        allow update: if superAdmin() || (tenantActive(c) && companyAdmin(c) && (
+          (!('locked' in resource.data) || resource.data.locked != true) ||
+          (resource.data.locked == true && request.resource.data.status == 'Correction' && exists(/databases/$(database)/documents/companies/$(c)/payrollCorrections/$(request.resource.data.correctionId))) ||
+          (resource.data.status == 'Correction' && request.resource.data.status == 'Locked')
+        ));
+        allow delete: if superAdmin() || (tenantActive(c) && companyAdmin(c) && resource.status != 'Locked');
+      }
+      match /payslips/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create, update, delete: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+      }
+      match /allowances/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create, update, delete: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+      }
+      match /deductions/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create, update, delete: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+      }
+      match /salaryHistory/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c);
+        allow update, delete: if false;
+      }
+      match /payrollJournals/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid && request.resource.data.balanced == true);
+        allow update, delete: if false;
+      }
+      match /payrollFinancialReconciliations/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid);
+        allow update, delete: if false;
+      }
+      match /payrollFinancialCloses/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.closedBy == request.auth.uid && request.resource.data.immutable == true && request.resource.data.status == 'Closed');
+        allow update, delete: if false;
+      }
+      match /payrollPayslips/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.issuedBy == request.auth.uid && request.resource.data.immutable == true);
+        allow update, delete: if false;
+      }
+      match /payrollPaymentBatches/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid && request.resource.data.makerUid == request.auth.uid && request.resource.data.status == 'Pending Approval' && request.resource.data.approvalRequired == true);
+        allow update: if superAdmin() || (tenantActive(c) && companyAdmin(c) && (
+          (resource.data.status == 'Pending Approval' && request.resource.data.status == 'Approved' && request.resource.data.approvedBy == request.auth.uid && request.resource.data.makerUid != request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy','approvedAt','checkerUid','immutableAfterApproval'])) ||
+          (resource.data.status == 'Approved' && request.resource.data.status == 'Exported' && request.resource.data.exportedBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','exportedBy','exportedAt','exportControlTotal','exportRecordCount'])) ||
+          (resource.data.status == 'Exported' && request.resource.data.status == 'Paid' && request.resource.data.paidBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','paidBy','paidAt','bankPaymentReference','paymentControlTotal'])) ||
+          ((resource.data.status == 'Paid' || resource.data.status == 'Exported') && request.resource.data.status in ['Reconciled','Exception'] && request.resource.data.reconciledBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reconciledBy','reconciledAt','settlementReference','actualSettlementAmount','settlementVariance','reconciliationStatus']))
+        ));
+        allow delete: if false;
+      }
+      match /payrollHistory/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.performedBy == request.auth.uid);
+        allow update, delete: if false;
+      }
+      match /settings/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create, update: if superAdmin() || (tenantActive(c) && companyAdmin(c));
+        allow delete: if false;
+      }
+      match /statutoryDeclarations/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid);
+        allow update, delete: if false;
+      }
+      match /statutoryYearCloses/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.companyId == c && request.resource.data.closedBy == request.auth.uid);
+        allow update, delete: if false;
+      }
+      match /payrollCorrections/{id} {
+        allow read: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)));
+        allow create: if superAdmin() || (tenantActive(c) && (companyAdmin(c) || operationsManager(c)) && request.resource.data.companyId == c && request.resource.data.requestedBy == request.auth.uid);
+        allow update: if superAdmin() || (tenantActive(c) && companyAdmin(c) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy','approvedAt','updatedAt']));
+        allow delete: if false;
+      }
+      match /guards/{id} {
+        allow read: if superAdmin() || managerWrite(c) || deviceMember(c);
+        allow create: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c);
+        allow update: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c && (!('companyId' in resource.data) || resource.data.companyId == c));
+        allow delete: if superAdmin() || managerWrite(c);
+      }
+      match /sites/{id} {
+        allow read: if superAdmin() || managerWrite(c) || deviceMember(c);
+        allow create: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c);
+        allow update: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c && (!('companyId' in resource.data) || resource.data.companyId == c));
+        allow delete: if superAdmin() || managerWrite(c);
+      }
+      match /shifts/{id} {
+        allow read: if superAdmin() || managerWrite(c) || deviceMember(c);
+        allow create: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c);
+        allow update: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c && (!('companyId' in resource.data) || resource.data.companyId == c));
+        allow delete: if superAdmin() || managerWrite(c);
+      }
+      match /checkpoints/{id} {
+        allow read: if superAdmin() || managerWrite(c) || deviceMember(c);
+        allow create: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c);
+        allow update: if superAdmin() || (managerWrite(c) && request.resource.data.companyId == c && (!('companyId' in resource.data) || resource.data.companyId == c));
+        allow delete: if superAdmin() || managerWrite(c);
+      }
+      match /attendance/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || attendanceDevice(c); }
+      // Payroll source contracts: application ownership is enforced by device type.
+      // attendance.html produces attendanceRecords for Staff; guard.html produces shiftRecords for Security.
+      match /attendanceRecords/{id} {
+        allow read: if superAdmin() || operationalRead(c);
+        allow create: if superAdmin() || (attendanceDevice(c) && request.resource.data.companyId == c && request.resource.data.department in ['Staff','staff'] && get(/databases/$(database)/documents/companies/$(c)/guards/$(request.resource.data.guardId)).data.department in ['Staff','staff'] && get(/databases/$(database)/documents/companies/$(c)/guards/$(request.resource.data.guardId)).data.status in ['Active','active']);
+        allow update: if superAdmin() || (attendanceDevice(c) && (!('companyId' in resource.data) || resource.data.companyId == c) && request.resource.data.companyId == c && request.resource.data.department == resource.data.department && resource.data.payrollLocked != true) || (companyAdmin(c) && (!('companyId' in resource.data) || resource.data.companyId == c) && request.resource.data.companyId == c && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payrollLocked','payrollLockedKey','payrollLockUpdatedAt','payrollLockUpdatedBy']));
+        allow delete: if superAdmin() || (companyAdmin(c) && resource.data.companyId == c);
+      }
+      match /shiftRecords/{id} {
+        allow read: if superAdmin() || operationalRead(c);
+        allow create: if superAdmin() || (guardDevice(c) && request.resource.data.companyId == c && request.resource.data.department in ['Security','security'] && get(/databases/$(database)/documents/companies/$(c)/guards/$(request.resource.data.guardId)).data.department in ['Security','security'] && get(/databases/$(database)/documents/companies/$(c)/guards/$(request.resource.data.guardId)).data.status in ['Active','active']);
+        allow update: if superAdmin() || (guardDevice(c) && (!('companyId' in resource.data) || resource.data.companyId == c) && request.resource.data.companyId == c && request.resource.data.department == resource.data.department && resource.data.payrollLocked != true) || (companyAdmin(c) && (!('companyId' in resource.data) || resource.data.companyId == c) && request.resource.data.companyId == c && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payrollLocked','payrollLockedKey','payrollLockUpdatedAt','payrollLockUpdatedBy']));
+        allow delete: if superAdmin() || (companyAdmin(c) && resource.data.companyId == c);
+      }
+      match /patrols/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /visitors/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /incidents/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /panicAlerts/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /broadcasts/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /broadcastReplies/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /broadcastReads/{id} { allow read, create, update, delete: if superAdmin() || supervisorWrite(c) || guardDevice(c); }
+      match /notifications/{id} {
+        allow read: if superAdmin() || companyMember(c);
+        allow create: if superAdmin() || companyMember(c);
+        allow update: if superAdmin() || (companyMember(c) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read','readAt','readBy','updatedAt']));
+        allow delete: if companyAdmin(c) || superAdmin();
+      }
+      match /supportTickets/{id} {
+        allow read: if superAdmin() || companyMember(c);
+        allow create: if companyMember(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid;
+        allow update: if superAdmin() || (companyAdmin(c) && request.resource.data.companyId == c) || (companyMember(c) && request.resource.data.companyId == c && request.resource.data.createdBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message','updatedAt']));
+        allow delete: if superAdmin() || companyAdmin(c);
+      }
+      // Explicit read-only enterprise registries. Do not use a catch-all rule here: Firestore rules are ORed,
+      // so a broad fallback would override the restrictive payroll/finance/payslip rules above.
+      match /documents/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /clients/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /contracts/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /assets/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /inventory/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /departments/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /costCentres/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /communications/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /quality/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /compliance/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /scheduling/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /workforce/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+      match /service/{id} { allow read: if superAdmin() || operationalRead(c); allow create, update, delete: if false; }
+    }
+
+    match /subscriptionPlans/{id} { allow read: if activeUser(); allow create, update, delete: if superAdmin(); }
+    match /superAdminAuditLogs/{id} { allow read, create: if superAdmin(); allow update, delete: if false; }
+    match /deviceRegistrations/{code} {
+      // Management may list/read registrations for their tenant. Anonymous device setup may only
+      // fetch an exact code; one-time registration codes are never listable to devices.
+      allow get: if superAdmin() || companyAdmin(resource.data.companyId) || operationsManager(resource.data.companyId) || (signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous' && resource.data.status == 'available' && resource.data.expiresAt > request.time);
+      allow list: if superAdmin() || companyAdmin(resource.data.companyId) || operationsManager(resource.data.companyId);
+      allow create: if (superAdmin() || companyAdmin(request.resource.data.companyId) || operationsManager(request.resource.data.companyId)) && request.resource.data.deviceType in ['guard','attendance'] && request.resource.data.status == 'available' && request.resource.data.expiresAt > request.time;
+      allow update: if superAdmin() || companyAdmin(resource.data.companyId) || operationsManager(resource.data.companyId) || (signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous' && request.resource.data.authUid == request.auth.uid && resource.data.status == 'available' && resource.data.expiresAt > request.time && request.resource.data.status == 'claimed' && request.resource.data.companyId == resource.data.companyId && request.resource.data.deviceType == resource.data.deviceType);
+      allow delete: if superAdmin() || companyAdmin(resource.data.companyId) || operationsManager(resource.data.companyId);
+    }
+    match /{path=**}/supportTickets/{ticketId} { allow read: if superAdmin(); }
+    match /superAdminNotifications/{id} { allow read, create, update, delete: if superAdmin(); }
+  }
+}

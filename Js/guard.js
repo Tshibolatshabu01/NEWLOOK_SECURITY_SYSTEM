@@ -1,9 +1,12 @@
+import { guardService } from "../SaaS/apps/guard/service.js";
+window.NEWLOOK_GUARD_SERVICE = guardService;
+import { bootDeviceApp } from "../SaaS/appKernel.js";
 // ============================================
 // NEWLOOK SECURITY SYSTEM
 // guard.js
 // ============================================
-
-import { db } from "./firebase.js";
+import { auth, companyCollection, companyDoc, db, getCompanyId } from "./firebase.js";
+import { ensureDeviceAuthorized } from "./deviceAuth.js";
 
 import {
     collection,
@@ -21,7 +24,11 @@ import {
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-
+const DEVICE_READY = await ensureDeviceAuthorized("guard.html", "guard");
+if (!DEVICE_READY) {
+    throw new Error("NEWLOOK: Device setup required.");
+}
+bootDeviceApp("guard", "guard", window.newlookDeviceContext || null);
 
 function stopCamera() {
 
@@ -185,7 +192,7 @@ async function restoreCurrentSession(){
         const guardSnap =
             await getDocs(
                 query(
-                    collection(db,"guards"),
+                    guardService.collection(db,"guards"),
                     where(
                         "guardId",
                         "==",
@@ -207,7 +214,11 @@ async function restoreCurrentSession(){
         const guard =
             guardSnap.docs[0].data();
 
-
+        if (String(guard.department || "").trim().toLowerCase() !== "security" ||
+            String(guard.status || "active").trim().toLowerCase() !== "active") {
+            clearCurrentSession();
+            return;
+        }
 
         // Restore shift
 
@@ -555,7 +566,7 @@ async function verifyGuardFace(){
     faceStatus.textContent="Verifying...";
 
     const guards =
-        await getDocs(collection(db,"guards"));
+        await getDocs(guardService.collection(db,"guards"));
 
     let matchedGuard=null;
 
@@ -564,7 +575,11 @@ async function verifyGuardFace(){
     guards.forEach(docSnap=>{
 
         const guard=docSnap.data();
+        const department = String(guard.department || "").trim().toLowerCase();
+        const status = String(guard.status || "active").trim().toLowerCase();
 
+        // Guard application is exclusively for active Security-department employees.
+        if(department !== "security" || status !== "active") return;
         if(!guard.faceDescriptor) return;
 
         const distance=
@@ -802,7 +817,7 @@ alert("Clock In successful.");
 async function getTodayShiftRecord(guardId){
 
     const q = query(
-        collection(db,"shiftRecords"),
+        guardService.collection(db,"shiftRecords"),
         where("guardId","==",guardId),
         where("date","==",getTodayDate())
     );
@@ -883,7 +898,7 @@ async function hasClockedInToday(guardId){
     const today = getTodayDate();
 
     const q = query(
-        collection(db,"shiftRecords"),
+        guardService.collection(db,"shiftRecords"),
         where("guardId","==",guardId),
         where("date","==",today)
     );
@@ -897,7 +912,7 @@ async function hasClockedInToday(guardId){
 async function getAssignedShift(guardId){
 
     const q = query(
-        collection(db,"shifts"),
+        guardService.collection(db,"shifts"),
         where("guardId","==",guardId)
     );
 
@@ -948,7 +963,7 @@ async function getSite(siteId){
 
     const snap = await getDoc(
 
-        doc(db,"sites",siteId)
+        guardService.doc(db,"sites",siteId)
 
     );
 
@@ -1064,13 +1079,14 @@ async function createShiftRecord(guard, shift){
 
         const position = await getCurrentPosition();
 
-        const recordRef = doc(collection(db,"shiftRecords"));
+        const recordRef = doc(guardService.collection(db,"shiftRecords"));
 
         console.log("Writing Shift Record...");
 
         await setDoc(recordRef,{
 
             recordId: recordRef.id,
+            companyId: getCompanyId(),
             id: recordRef.id,
             date: getTodayDate(),
             createdAt: serverTimestamp(),
@@ -1079,6 +1095,7 @@ async function createShiftRecord(guard, shift){
             employeeID: guard.employeeID,
             guardName: guard.fullName,
             department: guard.department,
+            role: guard.role || "",
             phone: guard.phone || "",
 
             siteId: shift.siteId,
@@ -1222,7 +1239,7 @@ async function clockOutGuard(record, shift){
 
     await updateDoc(
 
-        doc(db,"shiftRecords",record.id),
+        guardService.doc(db,"shiftRecords",record.id),
 
         {
 
@@ -1288,7 +1305,7 @@ async function lunchInGuard(record){
 
     await updateDoc(
 
-        doc(db,"shiftRecords",record.id),
+        guardService.doc(db,"shiftRecords",record.id),
 
         {
 
@@ -1363,7 +1380,7 @@ async function lunchOutGuard(record, shift){
 
     await updateDoc(
 
-        doc(db,"shiftRecords",record.id),
+        guardService.doc(db,"shiftRecords",record.id),
 
         {
 
@@ -1700,7 +1717,7 @@ async function getCheckpointByCode(code){
 
         query(
 
-            collection(db,"checkpoints"),
+            guardService.collection(db,"checkpoints"),
 
             where(
 
@@ -1740,7 +1757,7 @@ async function savePatrol(guard, checkpoint){
 
     const position = await getCurrentPosition();
 
-    const patrolRef = doc(collection(db,"patrols"));
+    const patrolRef = guardService.doc(guardService.collection(db,"patrols"));
 
     await setDoc(patrolRef,{
 
@@ -1779,7 +1796,7 @@ async function updatePatrolCount(record, checkpoint){
 
     await updateDoc(
 
-        doc(db,"shiftRecords",record.id),
+        guardService.doc(db,"shiftRecords",record.id),
 
         {
 
@@ -1994,7 +2011,7 @@ async function registerVisitor(guard,shift){
     }
 
     const visitorRef =
-        doc(collection(db,"visitors"));
+        guardService.doc(guardService.collection(db,"visitors"));
 
     await setDoc(visitorRef,{
 
@@ -2105,7 +2122,7 @@ function loadVisitors(){
 
     const q = query(
 
-        collection(db,"visitors"),
+        guardService.collection(db,"visitors"),
 
         where("checkedOut","==",false)
 
@@ -2226,7 +2243,7 @@ window.checkOutVisitor = async function(id){
 
     await updateDoc(
 
-        doc(db,"visitors",id),
+        guardService.doc(db,"visitors",id),
 
         {
 
@@ -2488,7 +2505,7 @@ async function saveIncident(guard,shift){
         await getCurrentPosition();
 
     const incidentRef =
-        doc(collection(db,"incidents"));
+        guardService.doc(guardService.collection(db,"incidents"));
 
     await setDoc(incidentRef,{
 
@@ -2565,7 +2582,7 @@ async function saveIncident(guard,shift){
 
     await updateDoc(
 
-        doc(
+        guardService.doc(
             db,
             "shiftRecords",
             shift.recordId
@@ -2594,7 +2611,7 @@ function loadIncidents(){
 
     const q = query(
 
-        collection(db,"incidents"),
+        guardService.doc(db,"incidents"),
 
         where("status","==","Open")
 
@@ -2710,7 +2727,7 @@ window.viewIncident = async function(id){
 
     const snap = await getDoc(
 
-        doc(db,"incidents",id)
+        guardService.doc(db,"incidents",id)
 
     );
 
@@ -2886,7 +2903,7 @@ async function savePanicAlert(guard,shift){
         await getCurrentPosition();
 
     const panicRef =
-        doc(collection(db,"panicAlerts"));
+        guardService.doc(guardService.collection(db,"panicAlerts"));
 
     await setDoc(panicRef,{
 
@@ -2959,7 +2976,7 @@ async function savePanicAlert(guard,shift){
 
     await updateDoc(
 
-        doc(
+        guardService.doc(
             db,
             "shiftRecords",
             shift.recordId
@@ -3010,7 +3027,7 @@ function loadBroadcasts(){
 
     onSnapshot(
 
-        collection(db,"broadcasts"),
+        guardService.collection(db,"broadcasts"),
 
         snapshot=>{
 
@@ -3101,7 +3118,7 @@ async function renderBroadcastTable(){
 
             query(
 
-                collection(db,"broadcastReads"),
+                guardService.collection(db,"broadcastReads"),
 
                 where(
 
@@ -3209,7 +3226,7 @@ window.viewBroadcast = async function(id){
 
         await getDoc(
 
-            doc(db,"broadcasts",id)
+            guardService.doc(db,"broadcasts",id)
 
         );
 
@@ -3309,7 +3326,7 @@ window.viewBroadcast = async function(id){
     const repliesSnap =
  await getDocs(
  query(
- collection(db,"broadcastReplies"),
+ guardService.collection(db,"broadcastReplies"),
  where(
  "broadcastId",
  "==",
@@ -3377,7 +3394,7 @@ async function markBroadcastRead(broadcastId){
 
             query(
 
-                collection(db,"broadcastReads"),
+                guardService.collection(db,"broadcastReads"),
 
                 where(
 
@@ -3407,9 +3424,9 @@ async function markBroadcastRead(broadcastId){
 
     const ref =
 
-        doc(
+        guardService.doc(
 
-            collection(
+            guardService.collection(
 
                 db,
 
@@ -3488,9 +3505,9 @@ window.replyBroadcast = async function(broadcastId){
 
     const ref =
 
-        doc(
+        guardService.doc(
 
-            collection(
+            guardService.collection(
 
                 db,
 
@@ -3675,7 +3692,7 @@ async function verifyGuardInsideSite(siteId){
 
     const siteSnap =
         await getDoc(
-            doc(db,"sites",siteId)
+            guardService.doc(db,"sites",siteId)
         );
 
 

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NEWLOOK SaaS • Payroll Management</title>
+
+    <link rel="stylesheet" href="Css/payroll.css">
+
+    <link rel="stylesheet" href="SaaS/actionSystem.css">
+</head>
+
+
+<body>
+<div id="payrollApp" class="payroll-shell" data-payroll-role="">
+
+
+    <!-- ================= HEADER ================= -->
+
+    <header id="payrollHeader" class="payroll-header">
+        <div class="brand-accent"></div>
+
+
+        <div id="companySection">
+
+            <img 
+                id="companyLogo"
+                src=""
+                alt="Company Logo"
+            >
+
+            <div>
+
+                <h1 id="companyName">
+                    Company Name
+                </h1>
+
+                <p class="eyebrow">NEWLOOK SECURITY SaaS</p>
+                <h2>Payroll Management</h2>
+                <div class="tenant-status"><span class="status-dot"></span><span id="subscriptionStatus">Tenant active</span></div>
+
+            </div>
+
+        </div>
+
+
+
+        <div id="payrollHeaderControls">
+
+
+            <div class="headerItem">
+
+                <label>
+                    Payroll Month
+                </label>
+
+                <select id="payrollMonth">
+
+                    <option value="">
+                        Select Month
+                    </option>
+
+                </select>
+
+            </div>
+
+
+
+            <div class="headerItem">
+
+                <label>
+                    Payroll Period
+                </label>
+
+                <select id="payrollPeriodSelector">
+
+                    <option value="">Select Period</option>
+
+                </select>
+
+            </div>
+
+
+
+            <div class="headerItem">
+
+                <span id="loggedAdmin">
+                    Administrator
+                </span>
+
+            </div>
+
+
+
+            <div class="headerItem">
+
+                <span id="currentDate">
+                    
+                </span>
+
+            </div>
+
+
+
+            <button id="notificationButton" type="button" class="action-btn action-btn-secondary icon-btn" aria-label="Notifications">
+
+                🔔
+
+            </button>
+
+
+
+            <button id="backDashboardButton" type="button" class="action-btn action-btn-secondary">
+
+                Back To Dashboard
+
+            </button>
+
+
+        </div>
+
+
+    </header>
+
+
+
+
+    <!-- ================= DASHBOARD CARDS ================= -->
+
+
+    <section class="page-intro">
+        <div><span class="section-kicker">FINANCE OPERATIONS</span><h2>Payroll Control Center</h2><p>Review, calculate, approve and finalize your company payroll securely.</p></div>
+        <div class="period-badge"><span>Selected period</span><strong id="selectedPeriodLabel">Current payroll period</strong></div>
+    </section>
+
+    <section id="dashboardCards" class="metrics-grid">
+
+
+        <div class="dashboardCard">
+
+            <h3>Total Employees</h3>
+
+            <span id="totalEmployees">
+                0
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Active Employees</h3>
+
+            <span id="activeEmployees">
+                0
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Payroll Ready</h3>
+
+            <span id="payrollReadyCount">
+                0
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Gross Payroll</h3>
+
+            <span id="grossPayroll">
+                R0.00
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Total Allowances</h3>
+
+            <span id="totalAllowances">
+                R0.00
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Total Deductions</h3>
+
+            <span id="totalDeductions">
+                R0.00
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Net Payroll</h3>
+
+            <span id="netPayroll">
+                R0.00
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Pending Payroll</h3>
+
+            <span id="pendingPayroll">
+                0
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Approved Payroll</h3>
+
+            <span id="approvedPayroll">
+                0
+            </span>
+
+        </div>
+
+
+
+        <div class="dashboardCard">
+
+            <h3>Paid Payroll</h3>
+
+            <span id="paidPayroll">
+                0
+            </span>
+
+        </div>
+
+
+    </section>
+
+
+
+
+
+    <!-- ================= TOOLBAR ================= -->
+
+
+    <section id="payrollToolbar" class="action-toolbar">
+        <div class="toolbar-heading"><span class="section-kicker">ACTIONS</span><strong>Payroll workflow</strong></div>
+
+
+        <button id="previewPayrollButton" type="button" class="action-btn action-btn-secondary">
+            Preview Payroll
+        </button>
+
+        <button id="processPayrollButton" type="button" class="action-btn action-btn-primary">
+            Process Payroll
+        </button>
+
+
+        <button id="approvePayrollButton" type="button" class="action-btn action-btn-success">
+            Approve Payroll
+        </button>
+
+
+        <button id="finalizePayrollButton" type="button" class="action-btn action-btn-warning">
+            Finalize Payroll
+        </button>
+
+
+        <button id="markPaidButton" type="button" class="action-btn action-btn-warning">
+            Mark As Paid
+        </button>
+
+
+        <button id="generatePayslipButton" class="action-btn action-btn-secondary">
+            Generate Payslips
+        </button>
+
+
+        <button id="printPayrollButton" class="action-btn action-btn-secondary">
+            Print Payroll
+        </button>
+
+
+        <button id="exportPDFButton" class="action-btn action-btn-secondary">
+            Export PDF
+        </button>
+
+
+        <button id="exportExcelButton" class="action-btn action-btn-secondary">
+            Export Excel
+        </button>
+
+
+        <button id="exportCSVButton" class="action-btn action-btn-secondary">
+            Export CSV
+        </button>
+
+
+        <button id="refreshPayrollButton" type="button" class="action-btn action-btn-secondary">
+            Refresh
+        </button>
+
+
+        <button id="payrollSettingsButton" type="button" class="action-btn action-btn-secondary">
+            Settings
+        </button>
+
+
+    </section>
+
+
+
+
+
+    <!-- ================= SEARCH ================= -->
+
+
+    <section id="payrollSearchSection" class="filters-panel">
+        <div class="filters-title"><span class="section-kicker">WORKFORCE</span><strong>Find payroll records</strong></div>
+
+
+        <input 
+            id="searchEmployee"
+            type="text"
+            placeholder="Search Employee"
+        >
+
+
+
+        <input 
+            id="searchEmployeeID"
+            type="text"
+            placeholder="Search Employee ID"
+        >
+
+
+
+        <select id="filterDepartment">
+
+            <option value="">
+                Department
+            </option>
+
+        </select>
+
+
+
+        <select id="filterPosition">
+
+            <option value="">
+                Position
+            </option>
+
+        </select>
+
+
+
+        <select id="filterPayrollStatus">
+
+            <option value="">
+                Payroll Status
+            </option>
+
+        </select>
+
+
+
+        <select id="filterSalaryType">
+
+            <option value="">
+                Salary Type
+            </option>
+
+        </select>
+
+
+
+        <select id="filterPaymentStatus">
+
+            <option value="">
+                Payment Status
+            </option>
+
+        </select>
+
+
+    </section>
+
+
+
+
+
+
+    <!-- ================= PAYROLL TABLE ================= -->
+
+
+    <section id="payrollTableSection" class="data-panel">
+        <div class="panel-head"><div><span class="section-kicker">PAYROLL REGISTER</span><h2>Employee Payroll</h2></div><span id="recordCountBadge" class="count-badge">0 records</span></div>
+        <div class="table-scroll">
+
+
+        <table id="payrollTable">
+
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Select
+                    </th>
+
+                    <th>
+                        Photo
+                    </th>
+
+                    <th>
+                        Employee ID
+                    </th>
+
+                    <th>
+                        Employee Name
+                    </th>
+
+                    <th>
+                        Position
+                    </th>
+
+                    <th>
+                        Department
+                    </th>
+
+                    <th>
+                        Salary Type
+                    </th>
+
+                    <th>
+                        Basic Salary
+                    </th>
+
+                    <th>
+                        Overtime
+                    </th>
+
+                    <th>
+                        Allowances
+                    </th>
+
+                    <th>
+                        Deductions
+                    </th>
+
+                    <th>
+                        Gross Salary
+                    </th>
+
+                    <th>
+                        Net Salary
+                    </th>
+
+                    <th>
+                        Payroll Status
+                    </th>
+
+                    <th>
+                        Payment Status
+                    </th>
+
+                    <th>
+                        Last Updated
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
+                </tr>
+
+
+            </thead>
+
+
+            <tbody id="payrollTableBody">
+
+
+            </tbody>
+
+
+        </table>
+        </div>
+    </section>
+
+
+
+
+
+
+    <!-- ================= SUMMARY ================= -->
+
+
+    <section id="payrollSummary" class="summary-panel">
+
+
+        <h2>
+            Payroll Summary
+        </h2>
+
+
+        <div id="summaryContainer">
+
+
+            <div>
+                Total Basic Salary
+                <span id="summaryBasicSalary">
+                    R0.00
+                </span>
+            </div>
+
+
+            <div>
+                Total Overtime
+                <span id="summaryOvertime">
+                    R0.00
+                </span>
+            </div>
+
+
+            <div>
+                Total Allowances
+                <span id="summaryAllowances">
+                    R0.00
+                </span>
+            </div>
+
+
+            <div>
+                Total Deductions
+                <span id="summaryDeductions">
+                    R0.00
+                </span>
+            </div>
+
+
+            <div>
+                Total Gross Salary
+                <span id="summaryGross">
+                    R0.00
+                </span>
+            </div>
+
+
+            <div>
+                Total Net Salary
+                <span id="summaryNet">
+                    R0.00
+                </span>
+            </div>
+
+
+        </div>
+
+
+    </section>
+
+
+
+
+
+    <!-- ================= EMPLOYEE PAYROLL MODAL ================= -->
+
+
+    <div id="employeePayrollModal" class="modal-layer" aria-hidden="true">
+
+
+        <div id="employeePayrollModalContent">
+
+
+            <h2>
+                Employee Payroll
+            </h2>
+
+
+            <div id="employeeInformationSection">
+
+            </div>
+
+
+            <div id="salaryInformationSection">
+
+            </div>
+
+
+            <div id="attendanceSummarySection">
+
+            </div>
+
+
+            <div id="allowancesSection">
+
+            </div>
+
+
+            <div id="deductionsSection">
+
+            </div>
+
+
+            <div id="salaryCalculationSection">
+
+            </div>
+
+
+            <div id="payrollNotesSection">
+
+                <textarea id="payrollNotes"></textarea>
+
+            </div>
+
+
+
+            <button id="savePayrollButton" class="action-btn action-btn-secondary">
+                Save
+            </button>
+
+
+            <button id="updatePayrollButton" class="action-btn action-btn-secondary">
+                Update
+            </button>
+
+
+            <button id="cancelPayrollButton" class="action-btn action-btn-secondary">
+                Cancel
+            </button>
+
+
+            <button id="modalGeneratePayslipButton" class="action-btn action-btn-secondary">
+                Generate Payslip
+            </button>
+
+
+            <button id="modalPrintButton" class="action-btn action-btn-secondary">
+                Print
+            </button>
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <!-- ================= CONFIRMATION DIALOG ================= -->
+
+
+    <div id="confirmationDialog" class="modal-layer" aria-hidden="true">
+
+
+        <div id="confirmationContent">
+
+
+            <p id="confirmationMessage"></p>
+
+
+            <button id="confirmActionButton" class="action-btn action-btn-secondary">
+                Confirm
+            </button>
+
+
+            <button id="cancelActionButton" class="action-btn action-btn-secondary">
+                Cancel
+            </button>
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <!-- ================= LOADING ================= -->
+
+
+    <div id="loadingOverlay" class="loading-layer" aria-live="polite">
+
+
+        <div id="loadingSpinner">
+
+        </div>
+
+
+        <p>
+            Loading...
+        </p>
+
+
+    </div>
+
+
+
+
+
+    <!-- ================= EMPTY STATE ================= -->
+
+
+    <div id="emptyPayrollState">
+
+
+        <h2>
+            No Payroll Records Found
+        </h2>
+
+
+        <p>
+            Payroll data will appear here after processing.
+        </p>
+
+
+    </div>
+
+
+
+
+
+    <!-- ================= FOOTER ================= -->
+
+
+    <footer id="payrollFooter">
+
+
+        <span id="footerCompanyName">
+            Company Name
+        </span>
+
+
+        <span>NEWLOOK SaaS Payroll</span>
+
+
+        <span>Secure company-scoped workspace</span>
+
+
+    </footer>
+
+
+
+</div>
+
+
+<script type="module" src="Js/firebase.js"></script>
+<script type="module" src="Js/auth.js"></script>
+<script type="module" src="Js/payroll.js"></script>
+
+
+
+    <script src="SaaS/actionManager.js"></script>
+<script type="module" src="Js/payrollEnterprise.js"></script>
+<script type="module" src="Js/payroll-finance-engine.js"></script>
+<script type="module" src="Js/payroll-treasury-engine.js"></script>
+<script type="module" src="Js/payroll-payslip-engine.js"></script>
+</body>
+
+</html>

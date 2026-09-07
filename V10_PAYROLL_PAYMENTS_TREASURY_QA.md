@@ -1,0 +1,22 @@
+# V10 Payroll Payments & Treasury QA
+
+- [x] Payment batch is tenant scoped.
+- [x] Only Finalized + Unpaid payroll is eligible.
+- [x] Locked finalized payroll remains eligible for treasury payment processing.
+- [x] Correction and Closed periods are blocked.
+- [x] Duplicate employee IDs block batch creation.
+- [x] Banking fields are validated before batch creation/export.
+- [x] Maker/checker approval requires a different Company Admin.
+- [x] Approved batch fields are protected by Firestore transition rules.
+- [x] Payment export rechecks employee count, banking data and total control value.
+- [x] Export is a local CSV artifact; no bank transfer is executed.
+- [x] Mark Paid requires a bank confirmation reference.
+- [x] Locked Finalized payroll allows only payment metadata updates after payment.
+- [x] Payment metadata is restricted by Firestore to the defined payment fields.
+- [x] Settlement reconciliation records expected vs actual amount and variance.
+- [x] Settlement variance transitions the batch to Exception.
+- [x] Payment batch records cannot be deleted.
+- [x] Payroll source separation remains unchanged: shiftRecords and attendanceRecords are not repurposed.
+- [x] All JS syntax checks pass.
+- [x] VERSION.json validates.
+- [x] ZIP integrity passes.

@@ -14,6 +14,7 @@
     <meta name="viewport"
       content="width=device-width, initial-scale=1.0">
 
+    <link rel="stylesheet" href="SaaS/actionSystem.css">
 </head>
 
 <body>
@@ -110,11 +111,11 @@
 
             <div class="action-card">
 
-                <button id="clockInBtn">
+                <button id="clockInBtn" class="action-btn action-btn-secondary">
                     Clock In
                 </button>
 
-                <button id="clockOutBtn">
+                <button id="clockOutBtn" class="action-btn action-btn-secondary">
                     Clock Out
                 </button>
 
@@ -130,7 +131,7 @@
 
             <div class="action-card">
 
-                <button id="scanCheckpointBtn">
+                <button id="scanCheckpointBtn" class="action-btn action-btn-secondary">
 
                     Scan Checkpoint QR
 
@@ -150,13 +151,13 @@
 
             <div class="action-card">
 
-                <button id="lunchInBtn">
+                <button id="lunchInBtn" class="action-btn action-btn-secondary">
 
                     Lunch In
 
                 </button>
 
-                <button id="lunchOutBtn">
+                <button id="lunchOutBtn" class="action-btn action-btn-secondary">
 
                     Lunch Out
 
@@ -198,13 +199,13 @@
                 class="visitor-preview"
             >
 
-            <button id="captureVisitorPhoto">
+            <button id="captureVisitorPhoto" class="action-btn action-btn-secondary">
 
                 Capture Photo
 
             </button>
 
-            <button id="switchVisitorCameraBtn">
+            <button id="switchVisitorCameraBtn" class="action-btn action-btn-secondary">
     Switch Camera
 </button>
 
@@ -271,7 +272,7 @@
                 placeholder="Notes"
             ></textarea>
 
-            <button id="checkInVisitorBtn">
+            <button id="checkInVisitorBtn" class="action-btn action-btn-secondary">
 
                 Visitor Check In
 
@@ -349,13 +350,13 @@
                 class="incident-preview"
             >
 
-            <button id="captureIncidentPhoto">
+            <button id="captureIncidentPhoto" class="action-btn action-btn-secondary">
 
                 Capture Photo
 
             </button>
 
-            <button id="switchIncidentCameraBtn">
+            <button id="switchIncidentCameraBtn" class="action-btn action-btn-secondary">
     Switch Camera
 </button>
 
@@ -442,7 +443,7 @@
                 placeholder="Immediate Action Taken"
             ></textarea>
 
-            <button id="reportIncidentBtn">
+            <button id="reportIncidentBtn" class="action-btn action-btn-secondary">
 
                 Report Incident
 
@@ -510,13 +511,13 @@
                 class="panic-preview"
             >
 
-            <button id="capturePanicPhoto">
+            <button id="capturePanicPhoto" class="action-btn action-btn-secondary">
 
                 Capture Evidence
 
             </button>
 
-            <button id="switchPanicCameraBtn">
+            <button id="switchPanicCameraBtn" class="action-btn action-btn-secondary">
     Switch Camera
 </button>
 
@@ -536,7 +537,7 @@
 
                 id="sendPanicAlertBtn"
 
-                class="panic-button"
+                class="panic-button action-btn action-btn-secondary"
 
                 
 
@@ -647,7 +648,7 @@
 
         </p>
 
-        <button id="cancelFaceBtn">
+        <button id="cancelFaceBtn" class="action-btn action-btn-secondary">
 
             Cancel
 
@@ -667,7 +668,7 @@
 
     <div id="qr-reader"></div>
 
-    <button id="closeScannerBtn">
+    <button id="closeScannerBtn" class="action-btn action-btn-secondary">
         Close
     </button>
 
@@ -692,6 +693,7 @@
  <script type="module" src="Js/firebase.js"></script>
  <script type="module" src="Js/guard.js"></script>
 
- </body>
+     <script src="SaaS/actionManager.js"></script>
+</body>
 
 </html>
