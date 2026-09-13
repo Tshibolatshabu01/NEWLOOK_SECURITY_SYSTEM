@@ -1,3 +1,4 @@
+// NEWLOOK: Site-radius verification is intentionally disabled for this application.
 import { guardService } from "../SaaS/apps/guard/service.js";
 window.NEWLOOK_GUARD_SERVICE = guardService;
 import { bootDeviceApp } from "../SaaS/appKernel.js";
@@ -677,21 +678,7 @@ clockInBtn.addEventListener("click", async () => {
             return null;
 
         }
-
-
-        const insideSite =
-               await verifyGuardInsideSite(
-          shift.siteId
-        );
-
-
-        if(!insideSite){
-
-             return null;
-
-        }
-
-        if (!isWorkingDay(shift)) {
+if (!isWorkingDay(shift)) {
 
             alert(
                 "Today is not one of your assigned working days."
@@ -974,56 +961,6 @@ async function getSite(siteId){
     }
 
     return snap.data();
-
-}
-
-// VERIFY GPS
-
-async function verifyGPS(siteId){
-
-    const site = await getSite(siteId);
-
-    if(!site){
-
-        alert("Assigned site not found.");
-
-        return false;
-
-    }
-
-    const position = await getCurrentPosition();
-
-    const distance = calculateDistance(
-
-        position.coords.latitude,
-
-        position.coords.longitude,
-
-        site.latitude,
-
-        site.longitude
-
-    );
-
-    if(distance > site.radius){
-
-        alert(
-
-            "You are outside the allowed site radius.\n\n" +
-
-            "Distance: " +
-
-            Math.round(distance) +
-
-            " metres."
-
-        );
-
-        return false;
-
-    }
-
-    return true;
 
 }
 
@@ -2445,13 +2382,6 @@ reportIncidentBtn.addEventListener("click", async()=>{
         shift
 
     } = session;
-
-    const insideSite = await verifyGPS(
-        shift.siteId
-    );
-
-    if(!insideSite) return;
-
     await saveIncident(
         guard,
         shift
@@ -2883,13 +2813,6 @@ sendPanicAlertBtn.addEventListener("click", async()=>{
         shift
 
     } = session;
-
-    const insideSite = await verifyGPS(
-        shift.siteId
-    );
-
-    if(!insideSite) return;
-
     await savePanicAlert(
         guard,
         shift
@@ -3591,207 +3514,3 @@ window.addEventListener(
 
 );
 
-//-------------------------- CHECKING RADIUS-----------------------------------------------------------------
-
-// ============================================
-// SITE LOCATION VERIFICATION
-// ============================================
-
-function getCurrentPosition(){
-
-    return new Promise((resolve,reject)=>{
-
-        navigator.geolocation.getCurrentPosition(
-
-            position=>{
-
-                resolve(position);
-
-            },
-
-            error=>{
-
-                alert(
-                    "Unable to get GPS location."
-                );
-
-                reject(error);
-
-            },
-
-            {
-                enableHighAccuracy:true,
-                timeout:30000,
-                maximumAge:5000
-            }
-
-        );
-
-    });
-
-}
-
-function calculateDistance(
-    lat1,
-    lon1,
-    lat2,
-    lon2
-){
-
-    const R = 6371000; // meters
-
-    const dLat =
-        (lat2-lat1) *
-        Math.PI / 180;
-
-
-    const dLon =
-        (lon2-lon1) *
-        Math.PI / 180;
-
-
-    const a =
-        Math.sin(dLat/2) *
-        Math.sin(dLat/2)
-
-        +
-
-        Math.cos(
-            lat1 *
-            Math.PI /180
-        )
-
-        *
-
-        Math.cos(
-            lat2 *
-            Math.PI /180
-        )
-
-        *
-
-        Math.sin(dLon/2)
-        *
-        Math.sin(dLon/2);
-
-
-    const c =
-        2 *
-        Math.atan2(
-            Math.sqrt(a),
-            Math.sqrt(1-a)
-        );
-
-
-    return R*c;
-
-}
-
-async function verifyGuardInsideSite(siteId){
-
-
-    const siteSnap =
-        await getDoc(
-            guardService.doc(db,"sites",siteId)
-        );
-
-
-    if(!siteSnap.exists()){
-
-        alert(
-            "Site information missing."
-        );
-
-        return false;
-
-    }
-
-
-    const site =
-        siteSnap.data();
-
-
-    const position =
-        await getCurrentPosition();
-
-
-    const guardLat =
-        position.coords.latitude;
-
-
-    const guardLng =
-        position.coords.longitude;
-
-
-
-    const distance =
-        calculateDistance(
-
-            guardLat,
-            guardLng,
-
-            site.latitude,
-            site.longitude
-
-        );
-
-
-    console.log("========== GPS CHECK ==========");
-
-    console.log(
-          "Guard Latitude:",
-          guardLat
-        );
-
-    console.log(
-           "Guard Longitude:",
-           guardLng
-        );
-
-    console.log(
-         "Site Latitude:",
-         site.latitude
-        );
-
-    console.log(
-         "Site Longitude:",
-         site.longitude
-        );
-
-    console.log(
-         "Allowed Radius:",
-         site.radius
-        );
-
-    console.log(
-              "Calculated Distance:",
-              distance,
-              "meters"
-        );
-
-    console.log("==============================");
-
-
-
-    if(distance > Number(site.radius)){
-
-
-        alert(
-
-            "You are outside the site area.\n\n"+
-
-            "Distance: "+
-            Math.round(distance)+
-            " meters"
-
-        );
-
-
-        return false;
-
-    }
-
-
-    return true;
-
-}
