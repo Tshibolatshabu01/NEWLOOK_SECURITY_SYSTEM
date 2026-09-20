@@ -1,7 +1,7 @@
-# NEWLOOK SaaS V10 — Senior Completion Pass
+# YOURI SaaS V10 — Senior Completion Pass
 
 ## Source
-Built from the uploaded `NEWLOOK_SaaS_2.0_V10_DEVICE_AUTH_FIXED.zip`.
+Built from the uploaded `YOURI_SaaS_2.0_V10_DEVICE_AUTH_FIXED.zip`.
 
 ## Protected applications
 The existing Guard and Attendance application files were preserved and not rewritten:

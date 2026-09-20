@@ -1,7 +1,7 @@
-# NEWLOOK SaaS V10 — Customer Ready Release
+# YOURI SaaS V10 — Customer Ready Release
 
 ## Product scope
-NEWLOOK SaaS is a multi-tenant security operations platform for customer companies. The release contains the Super Admin platform control center and the customer Company Operations workspace.
+YOURI SaaS is a multi-tenant security operations platform for customer companies. The release contains the Super Admin platform control center and the customer Company Operations workspace.
 
 ## Administrative roles
 - `super_admin`: platform-level tenant, plan, support, notification and activity administration.

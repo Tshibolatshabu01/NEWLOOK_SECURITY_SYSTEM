@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NEWLOOK Device Management</title>
+<title>YOURI Device Management</title>
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}body{margin:0;background:#f4f6f9}.wrap{max-width:900px;margin:40px auto;padding:20px}.card{background:#fff;padding:25px;border-radius:14px;box-shadow:0 5px 20px rgba(0,0,0,.08);margin-bottom:20px}h1,h2{color:#0b3d91}.row{display:grid;grid-template-columns:1fr 1fr;gap:15px}label{font-weight:700;display:block;margin-bottom:7px}select,input,button{width:100%;padding:12px;border-radius:8px;font-size:15px}select,input{border:1px solid #ccc}button{border:0;background:#0b3d91;color:#fff;font-weight:700;cursor:pointer;margin-top:18px}.code{font-size:24px;letter-spacing:2px;background:#eef5ff;padding:15px;border-radius:8px;word-break:break-all;margin-top:15px}.status{margin-top:12px;font-weight:700}.back{display:inline-block;margin-bottom:15px;color:#0b3d91;text-decoration:none}.table{width:100%;border-collapse:collapse;margin-top:20px}.table th,.table td{padding:10px;border-bottom:1px solid #ddd;text-align:left}.pill{padding:5px 9px;border-radius:999px;background:#eef5ff}.warning{color:#dc3545}.device-action{width:auto;padding:7px 10px;margin:0;background:#0b3d91}.revoke-device{background:#b42318}.activate-device{background:#198754}@media(max-width:650px){.row{grid-template-columns:1fr}.wrap{margin:10px auto}}
 </style>
@@ -28,6 +28,7 @@
 <table class="table"><thead><tr><th>Device</th><th>Site</th><th>Type</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody id="registrationList"></tbody></table>
 </div>
 </div>
+<script src="SaaS/notificationCenter.js"></script>
 <script type="module" src="Js/deviceRegistration.js"></script>
     <script src="SaaS/actionManager.js"></script>
 </body>

@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V12.4 — Enterprise Domain Boundary Migration
+# YOURI SaaS V12.4 — Enterprise Domain Boundary Migration
 
 ## Purpose
 Continue the V10-preserving enterprise rebuild without replacing the original application workflows.

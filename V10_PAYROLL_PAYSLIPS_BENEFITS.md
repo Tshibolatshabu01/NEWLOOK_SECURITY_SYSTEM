@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Payslips & Benefits Control
+# YOURI SaaS V10 — Payroll Payslips & Benefits Control
 
 ## Scope
 Adds a controlled payroll statement layer on top of finalized/paid payroll.

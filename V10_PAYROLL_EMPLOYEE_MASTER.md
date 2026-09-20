@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Employee Master & Compensation Management
+# YOURI SaaS V10 — Payroll Employee Master & Compensation Management
 
 ## Added
 - Payroll Employee Master with search and employee readiness status.

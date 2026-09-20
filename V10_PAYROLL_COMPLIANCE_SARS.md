@@ -1,10 +1,10 @@
-# NEWLOOK SaaS V10 — Payroll Compliance & Statutory Reporting
+# YOURI SaaS V10 — Payroll Compliance & Statutory Reporting
 
 ## Scope
 Adds a tenant-scoped payroll compliance workspace for South African PAYE/UIF/SDL reporting preparation, EMP201 monthly working schedules, EMP501 reconciliation snapshots, IRP5/IT3(a) working registers and tax-year close snapshots.
 
 ## Important boundary
-NEWLOOK prepares and reconciles data; it does **not** directly submit EMP201/EMP501 or IRP5 files to SARS. Employers must validate and submit through the SARS-prescribed channels and current BRS/e@syFile/eFiling requirements.
+YOURI prepares and reconciles data; it does **not** directly submit EMP201/EMP501 or IRP5 files to SARS. Employers must validate and submit through the SARS-prescribed channels and current BRS/e@syFile/eFiling requirements.
 
 ## Current statutory basis
 - PAYE: stored payroll PAYE values are aggregated by reporting period.

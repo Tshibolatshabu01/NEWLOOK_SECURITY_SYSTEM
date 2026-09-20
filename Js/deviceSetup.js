@@ -29,6 +29,14 @@ function saveDevice(data, uid) {
     localStorage.setItem("newlookDeviceStatus", "active");
     localStorage.setItem("newlookDeviceName", data.deviceName || "");
     localStorage.setItem("newlookDeviceType", data.deviceType || "guard");
+    localStorage.setItem("newlookDeviceContext", JSON.stringify({
+        deviceId: uid,
+        companyId: data.companyId,
+        siteId: data.siteId,
+        status: "active",
+        deviceName: data.deviceName || "NEWLOOK Device",
+        deviceType: data.deviceType || "guard"
+    }));
 }
 
 
@@ -38,7 +46,11 @@ function existingActivationMatchesType() {
     const siteId = localStorage.getItem("newlookDeviceSiteId");
     const status = localStorage.getItem("newlookDeviceStatus");
     const type = String(localStorage.getItem("newlookDeviceType") || "").toLowerCase();
-    return Boolean(deviceId && companyId && siteId && status === "active" && type === expectedDeviceType);
+    if (deviceId && companyId && siteId && status === "active" && type === expectedDeviceType) return true;
+    try {
+        const stored = JSON.parse(localStorage.getItem("newlookDeviceContext") || "null");
+        return Boolean(stored?.deviceId && stored?.companyId && stored?.siteId && stored?.status === "active" && String(stored?.deviceType || "").toLowerCase() === expectedDeviceType);
+    } catch { return false; }
 }
 
 function showAlreadyActivated() {

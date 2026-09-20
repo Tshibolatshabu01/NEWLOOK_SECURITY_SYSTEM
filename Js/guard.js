@@ -7,7 +7,7 @@ import { bootDeviceApp } from "../SaaS/appKernel.js";
 // guard.js
 // ============================================
 import { auth, companyCollection, companyDoc, db, getCompanyId } from "./firebase.js";
-import { ensureDeviceAuthorized } from "./deviceAuth.js";
+import { ensureDeviceAuthorized, getDeviceContext } from "./deviceAuth.js";
 
 import {
     collection,
@@ -29,7 +29,42 @@ const DEVICE_READY = await ensureDeviceAuthorized("guard.html", "guard");
 if (!DEVICE_READY) {
     throw new Error("NEWLOOK: Device setup required.");
 }
-bootDeviceApp("guard", "guard", window.newlookDeviceContext || null);
+bootDeviceApp("guard", "guard", getDeviceContext());
+
+// GPS capture is optional operational metadata. Site-radius enforcement is intentionally disabled.
+function getCurrentPosition(options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }) {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by this device/browser."));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+}
+
+function showGuardActionError(action, error) {
+    console.error(`NEWLOOK ${action} failed:`, error);
+    const code = error?.code || "";
+    if (code === "permission-denied" || /Missing or insufficient permissions/i.test(error?.message || "")) {
+        alert(`${action} failed because this device is not authorized for this company record. Please contact the Company Administrator to verify the device activation.`);
+        return;
+    }
+    alert(`${action} failed. ${error?.message || "Please try again."}`);
+}
+
+async function captureOperationalGPS() {
+    try {
+        const position = await getCurrentPosition();
+        return {
+            latitude: Number(position.coords.latitude),
+            longitude: Number(position.coords.longitude),
+            accuracy: Number(position.coords.accuracy || 0)
+        };
+    } catch (error) {
+        console.warn("NEWLOOK GPS capture unavailable; continuing without location:", error?.message || error);
+        return null;
+    }
+}
 
 function stopCamera() {
 
@@ -127,14 +162,7 @@ function setCurrentSession(guard, shift = null, record = null) {
     }
 
 
-    // Reload broadcasts after session exists
-    if(typeof loadBroadcasts === "function"){
-
-        loadBroadcasts();
-
-    }
-
-}
+} 
 
 function clearCurrentSession() {
 
@@ -1014,7 +1042,7 @@ async function createShiftRecord(guard, shift){
             Number(shift.graceMinutes || 0)
         );
 
-        const position = await getCurrentPosition();
+        const position = await captureOperationalGPS();
 
         const recordRef = doc(guardService.collection(db,"shiftRecords"));
 
@@ -1197,36 +1225,19 @@ async function clockOutGuard(record, shift){
 }
 
 clockOutBtn.addEventListener("click", async () => {
-
-    const session = await verifyGuardOnDuty();
-
-    if(!session) return;
-
-    const {
-
-        record,
-
-        shift
-
-    } = session;
-
-    await clockOutGuard(
-
-        record,
-
-        shift
-
-    );
-
-    clearCurrentSession();
-
-    broadcastData = [];
- renderBroadcastTable();
-
-    setDutyState("OFF_DUTY");
-
-    alert("Clock Out successful.");
-
+    try {
+        const session = await verifyGuardOnDuty();
+        if(!session) return;
+        const { record, shift } = session;
+        await clockOutGuard(record, shift);
+        clearCurrentSession();
+        broadcastData = [];
+        renderBroadcastTable();
+        setDutyState("OFF_DUTY");
+        alert("Clock Out successful.");
+    } catch (error) {
+        showGuardActionError("Clock Out", error);
+    }
 });
 // ------------------LUNCH MANAGEMENT----------------------------------------------------------------
 
@@ -1257,25 +1268,17 @@ async function lunchInGuard(record){
 }
 
 lunchInBtn.addEventListener("click", async()=>{
-
-    const session = await verifyGuardOnDuty();
-
-    if(!session) return;
-
-    const {
-
-        record
-
-    } = session;
-
-    const success = await lunchInGuard(record);
-
-    if(!success) return;
-
-    alert("Lunch started.");
-
-    setDutyState("LUNCH");
-
+    try {
+        const session = await verifyGuardOnDuty();
+        if(!session) return;
+        const { record } = session;
+        const success = await lunchInGuard(record);
+        if(!success) return;
+        alert("Lunch started.");
+        setDutyState("LUNCH");
+    } catch (error) {
+        showGuardActionError("Lunch start", error);
+    }
 });
 
 function calculateLunchDuration(lunchInTime){
@@ -1346,49 +1349,18 @@ async function lunchOutGuard(record, shift){
 }
 
 lunchOutBtn.addEventListener("click", async()=>{
-
-    const session = await verifyGuardOnDuty();
-
-    if(!session) return;
-
-    const {
-
-        record,
-
-        shift
-
-    } = session;
-
-    const result = await lunchOutGuard(
-
-        record,
-
-        shift
-
-    );
-
-    if(!result) return;
-
-    alert(
-
-        "Lunch completed.\n\n" +
-
-        "Duration: " +
-
-        result.duration +
-
-        " minutes"
-
-    );
-
-    if(result.exceeded){
-
-        alert("Allowed lunch time exceeded.");
-
+    try {
+        const session = await verifyGuardOnDuty();
+        if(!session) return;
+        const { record, shift } = session;
+        const result = await lunchOutGuard(record, shift);
+        if(!result) return;
+        alert("Lunch completed.\n\nDuration: " + result.duration + " minutes");
+        if(result.exceeded) alert("Allowed lunch time exceeded.");
+        setDutyState("ON_DUTY");
+    } catch (error) {
+        showGuardActionError("Lunch completion", error);
     }
-
-    setDutyState("ON_DUTY");
-
 });
 
 // ------------------------PATROL MANAGEMENT-------------------------------------------------------------
@@ -1418,13 +1390,13 @@ let scannerRunning = false;
 //--------------------------------------------------
 
 scanCheckpointBtn.addEventListener("click", async () => {
-
-    const session = await verifyGuardOnDuty();
-
-    if (!session) return;
-
-    startQRScanner(session.guard);
-
+    try {
+        const session = await verifyGuardOnDuty();
+        if (!session) return;
+        startQRScanner(session.guard);
+    } catch (error) {
+        showGuardActionError("Patrol scanner", error);
+    }
 });
 
 
@@ -1692,13 +1664,15 @@ async function getCheckpointByCode(code){
 
 async function savePatrol(guard, checkpoint){
 
-    const position = await getCurrentPosition();
+    const position = await captureOperationalGPS();
 
     const patrolRef = guardService.doc(guardService.collection(db,"patrols"));
 
     await setDoc(patrolRef,{
 
         patrolId: patrolRef.id,
+
+        companyId: getCompanyId(),
 
         guardId: guard.guardId,
         employeeID: guard.employeeID,
@@ -1713,8 +1687,9 @@ async function savePatrol(guard, checkpoint){
         checkpointCode: checkpoint.checkpointCode,
         checkpointName: checkpoint.checkpointName,
 
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: position?.latitude ?? null,
+        longitude: position?.longitude ?? null,
+        gpsAccuracy: position?.accuracy ?? null,
 
         scanTime: serverTimestamp(),
         createdAt: serverTimestamp()
@@ -2253,7 +2228,6 @@ incidentTableSection.style.display = "none";
 
 
 incidentTableSection.style.display = "block";
-loadIncidents();
 
 incidentTableSection.style.display = "none";
 incidentTableBody.innerHTML = "";
@@ -2432,7 +2406,7 @@ async function saveIncident(guard,shift){
     }
 
     const position =
-        await getCurrentPosition();
+        await captureOperationalGPS();
 
     const incidentRef =
         guardService.doc(guardService.collection(db,"incidents"));
@@ -2441,6 +2415,8 @@ async function saveIncident(guard,shift){
 
         incidentId:
             incidentRef.id,
+
+        companyId: getCompanyId(),
 
         incidentNumber:
             generateIncidentNumber(),
@@ -2489,10 +2465,12 @@ async function saveIncident(guard,shift){
         ],
 
         latitude:
-            position.coords.latitude,
+            position?.latitude ?? null,
 
         longitude:
-            position.coords.longitude,
+            position?.longitude ?? null,
+
+        gpsAccuracy: position?.accuracy ?? null,
 
         date:
             getTodayDate(),
@@ -2541,7 +2519,7 @@ function loadIncidents(){
 
     const q = query(
 
-        guardService.doc(db,"incidents"),
+        guardService.collection(db,"incidents"),
 
         where("status","==","Open")
 
@@ -2823,7 +2801,7 @@ sendPanicAlertBtn.addEventListener("click", async()=>{
 async function savePanicAlert(guard,shift){
 
     const position =
-        await getCurrentPosition();
+        await captureOperationalGPS();
 
     const panicRef =
         guardService.doc(guardService.collection(db,"panicAlerts"));
@@ -2832,6 +2810,8 @@ async function savePanicAlert(guard,shift){
 
         panicId:
             panicRef.id,
+
+        companyId: getCompanyId(),
 
         guardId:
             guard.guardId,
@@ -2855,10 +2835,12 @@ async function savePanicAlert(guard,shift){
             shift.shiftId,
 
         latitude:
-            position.coords.latitude,
+            position?.latitude ?? null,
 
         longitude:
-            position.coords.longitude,
+            position?.longitude ?? null,
+
+        gpsAccuracy: position?.accuracy ?? null,
 
         photoBase64:
             panicPhotoBase64 || "",
@@ -3445,6 +3427,8 @@ window.replyBroadcast = async function(broadcastId){
         replyId:
 
             ref.id,
+
+        companyId: getCompanyId(),
 
         broadcastId,
 

@@ -1,4 +1,4 @@
-# NEWLOOK V10 Enterprise Production Audit
+# YOURI V10 Enterprise Production Audit
 
 
 ## 2026-09-06 Hardening Pass — Tenant/Data Integrity

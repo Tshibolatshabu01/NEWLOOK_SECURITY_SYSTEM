@@ -16,6 +16,7 @@ const DEVICE_ID_KEY = "newlookDeviceId";
 const DEVICE_COMPANY_KEY = "newlookDeviceCompanyId";
 const DEVICE_SITE_KEY = "newlookDeviceSiteId";
 const DEVICE_STATUS_KEY = "newlookDeviceStatus";
+const DEVICE_CONTEXT_KEY = "newlookDeviceContext";
 
 function waitForAuthUser() {
     return new Promise((resolve, reject) => {
@@ -28,8 +29,47 @@ function waitForAuthUser() {
 }
 
 function clearDeviceStorage() {
-    [DEVICE_ID_KEY, DEVICE_COMPANY_KEY, DEVICE_SITE_KEY, DEVICE_STATUS_KEY, "newlookDeviceName", "newlookDeviceType"]
+    [DEVICE_ID_KEY, DEVICE_COMPANY_KEY, DEVICE_SITE_KEY, DEVICE_STATUS_KEY, "newlookDeviceName", "newlookDeviceType", DEVICE_CONTEXT_KEY]
         .forEach(key => localStorage.removeItem(key));
+}
+
+function readStoredDeviceContext() {
+    try {
+        const raw = localStorage.getItem(DEVICE_CONTEXT_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.deviceId && parsed.companyId && parsed.siteId && parsed.status === "active") return parsed;
+        }
+    } catch (error) {
+        console.warn("NEWLOOK: stored device context could not be parsed; rebuilding it.", error);
+    }
+    const context = {
+        deviceId: localStorage.getItem(DEVICE_ID_KEY),
+        companyId: localStorage.getItem(DEVICE_COMPANY_KEY),
+        siteId: localStorage.getItem(DEVICE_SITE_KEY),
+        status: localStorage.getItem(DEVICE_STATUS_KEY),
+        deviceName: localStorage.getItem("newlookDeviceName") || "",
+        deviceType: localStorage.getItem("newlookDeviceType") || ""
+    };
+    if (context.deviceId && context.companyId && context.siteId && context.status === "active") {
+        localStorage.setItem(DEVICE_CONTEXT_KEY, JSON.stringify(context));
+        return context;
+    }
+    return null;
+}
+
+function publishDeviceContext(device) {
+    const context = {
+        deviceId: device.deviceId || device.authUid || device.id,
+        companyId: device.companyId,
+        siteId: device.siteId,
+        status: device.status || "active",
+        deviceName: device.deviceName || device.name || "NEWLOOK Device",
+        deviceType: String(device.deviceType || "").toLowerCase()
+    };
+    localStorage.setItem(DEVICE_CONTEXT_KEY, JSON.stringify(context));
+    window.newlookDeviceContext = context;
+    return context;
 }
 
 export async function ensureDeviceAuthorized(returnPage = "guard.html", expectedType = null) {
@@ -60,10 +100,11 @@ export async function ensureDeviceAuthorized(returnPage = "guard.html", expected
             }
         }
 
-        const deviceId = localStorage.getItem(DEVICE_ID_KEY);
-        const companyId = localStorage.getItem(DEVICE_COMPANY_KEY);
-        const siteId = localStorage.getItem(DEVICE_SITE_KEY);
-        const status = localStorage.getItem(DEVICE_STATUS_KEY);
+        const stored = readStoredDeviceContext();
+        const deviceId = stored?.deviceId || localStorage.getItem(DEVICE_ID_KEY);
+        const companyId = stored?.companyId || localStorage.getItem(DEVICE_COMPANY_KEY);
+        const siteId = stored?.siteId || localStorage.getItem(DEVICE_SITE_KEY);
+        const status = stored?.status || localStorage.getItem(DEVICE_STATUS_KEY);
 
         if (!deviceId || !companyId || !siteId || status !== "active") {
             const returnUrl = encodeURIComponent(returnPage);
@@ -103,6 +144,7 @@ export async function ensureDeviceAuthorized(returnPage = "guard.html", expected
             return false;
         }
 
+        publishDeviceContext({ ...device, deviceId: device.deviceId || user.uid, authUid: user.uid });
         return true;
     } catch (error) {
         console.error("Device authorization failed:", error);
@@ -117,9 +159,12 @@ export async function ensureDeviceAuthorized(returnPage = "guard.html", expected
 }
 
 export function getDeviceContext() {
-    return {
+    return readStoredDeviceContext() || {
         deviceId: localStorage.getItem(DEVICE_ID_KEY),
         companyId: localStorage.getItem(DEVICE_COMPANY_KEY),
-        siteId: localStorage.getItem(DEVICE_SITE_KEY)
+        siteId: localStorage.getItem(DEVICE_SITE_KEY),
+        status: localStorage.getItem(DEVICE_STATUS_KEY),
+        deviceName: localStorage.getItem("newlookDeviceName") || "",
+        deviceType: localStorage.getItem("newlookDeviceType") || ""
     };
 }

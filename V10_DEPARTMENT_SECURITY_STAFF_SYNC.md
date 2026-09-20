@@ -1,4 +1,4 @@
-# NEWLOOK V10 — Security / Staff Department Synchronization
+# YOURI V10 — Security / Staff Department Synchronization
 
 ## Source of truth
 Admin Guard Management remains the employee master for Department and Role. Department is `Security` or `Staff`; Role is the employee function.

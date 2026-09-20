@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Production Functionality Hardening
+# YOURI SaaS V10 — Production Functionality Hardening
 
 ## Completed
 - Enterprise Super Admin navigation and operational sections retained.

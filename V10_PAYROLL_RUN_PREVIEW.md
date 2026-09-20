@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Run Preview & Validation Engine
+# YOURI SaaS V10 — Payroll Run Preview & Validation Engine
 
 ## Release
 Payroll Run Preview is added before payroll processing.

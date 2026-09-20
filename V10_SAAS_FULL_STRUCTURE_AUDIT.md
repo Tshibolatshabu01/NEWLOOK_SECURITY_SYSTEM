@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Full SaaS Structure Audit & Synchronization
+# YOURI SaaS V10 — Full SaaS Structure Audit & Synchronization
 
 Date: 2026-09-05
 Scope: Every file in the supplied production ZIP.

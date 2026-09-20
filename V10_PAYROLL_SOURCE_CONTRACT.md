@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Source Contract
+# YOURI SaaS V10 — Payroll Source Contract
 
 This contract is part of the V10 architecture and must be preserved.
 

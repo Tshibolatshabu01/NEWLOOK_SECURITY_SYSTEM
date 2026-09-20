@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Payments & Treasury Control Centre
+# YOURI SaaS V10 — Payroll Payments & Treasury Control Centre
 
 ## Scope
 Adds a tenant-scoped payroll payment workflow for finalized and unpaid payroll.

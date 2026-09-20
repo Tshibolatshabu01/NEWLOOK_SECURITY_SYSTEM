@@ -101,7 +101,8 @@ window.currentUser = {
     companyId: admin.companyId || null,
     role: normalizedRole,
     fullName: admin.fullName || "",
-    email: admin.email || ""
+    email: admin.email || "",
+    companyName: session.companyName || ""
 };
 
 if (!isSuperAdmin(normalizedRole) && !isManagement(normalizedRole)) {
@@ -191,6 +192,45 @@ menuItems.forEach(item=>{
 });
 
 console.log("Y O U R I ADMIN READY");
+
+/* =========================================================
+   NEWLOOK ADMIN AUTO-REFRESH / LIVE DATA FALLBACK
+   Realtime listeners remain authoritative for operational feeds.
+   This lightweight fallback refreshes getDocs-backed registries
+   without reloading the page or duplicating onSnapshot listeners.
+========================================================= */
+let newlookAdminRefreshTimer = null;
+let newlookAdminRefreshBusy = false;
+async function refreshAdminRegistries() {
+    if (newlookAdminRefreshBusy || document.hidden) return;
+    const activeUser = window.currentUser || window.NEWLOOK?.session;
+    if (!activeUser?.companyId) return;
+    newlookAdminRefreshBusy = true;
+    try {
+        await Promise.allSettled([
+            loadGuards(document.getElementById("searchGuard")?.value || "", document.getElementById("filterStatus")?.value || ""),
+            loadSites(document.getElementById("searchSite")?.value || ""),
+            loadCheckpoints(),
+            loadShifts(document.getElementById("searchShift")?.value || ""),
+            loadGuardSiteOptions(),
+            loadSiteOptions()
+        ]);
+        window.NEWLOOK_ADMIN_LAST_REFRESH = new Date().toISOString();
+        window.NEWLOOK_ADMIN_REALTIME_STATUS = "connected+fallback";
+    } finally {
+        newlookAdminRefreshBusy = false;
+    }
+}
+function startAdminAutoRefresh() {
+    if (newlookAdminRefreshTimer) clearInterval(newlookAdminRefreshTimer);
+    newlookAdminRefreshTimer = setInterval(refreshAdminRegistries, 45000);
+    window.NEWLOOK_ADMIN_AUTO_REFRESH = true;
+}
+startAdminAutoRefresh();
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshAdminRegistries();
+});
+
 
 // =======================================================
 // GUARD MANAGEMENT
@@ -3554,6 +3594,8 @@ window.addEventListener("click",(event)=>{
 
 });
 
+
+window.viewVisitor = viewVisitor;
 function filterVisitors(){
 
     let filtered = [...visitorData];
@@ -10460,95 +10502,10 @@ async function exportStaffReportExcel() {
 
 }
 
-/* =========================================================
-   NEWLOOK V10 CUSTOMER NOTIFICATIONS + SUPPORT BRIDGE
-   Non-invasive extension: preserves existing Admin structure.
-========================================================= */
-(() => {
-  const customerId = () => getCompanyId();
-  const safeText = v => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  const ensureCustomerTools = () => {
-    const menu = document.querySelector('.menu');
-    if (!menu || menu.querySelector('[data-section="notifications"]')) return;
-    const make = (section,label) => { const li=document.createElement('li'); li.dataset.section=section; li.innerHTML=`<i class="fas fa-${section==='notifications'?'bell':'life-ring'}"></i> ${label}`; menu.appendChild(li); return li; };
-    const n=make('notifications','Notifications'), sp=make('support','Support');
-    const notifications=document.createElement('section'); notifications.id='notifications'; notifications.className='page'; notifications.innerHTML=`<header class="staff-report-header"><div class="staff-report-company"><img src="assets/images/logo.png" alt="Company Logo"><div><h1>Notifications</h1><p>Company announcements and platform alerts</p></div></div></header><h2><i class="fas fa-bell"></i> NOTIFICATIONS</h2><div id="customerNotificationsList"></div>`;
-    const support=document.createElement('section'); support.id='support'; support.className='page'; support.innerHTML=`<header class="staff-report-header"><div class="staff-report-company"><img src="assets/images/logo.png" alt="Company Logo"><div><h1>Support</h1><p>Contact NEWLOOK platform support</p></div></div></header><h2><i class="fas fa-life-ring"></i> SUPPORT</h2><div class="guard-form"><div class="form-row"><div class="form-group"><label>Subject</label><input id="supportSubject" maxlength="120"></div><div class="form-group"><label>Priority</label><select id="supportPriority"><option>normal</option><option>high</option><option>urgent</option></select></div></div><div class="form-group"><label>Message</label><textarea id="supportMessage" rows="5" maxlength="4000"></textarea></div><div class="button-row"><button id="createSupportTicket" class="action-btn action-btn-primary">Create Ticket</button><button id="refreshSupportTickets" class="action-btn action-btn-secondary">Refresh</button></div></div><div id="supportTicketsList"></div>`;
-    document.querySelector('.main')?.append(notifications,support);
-    n.addEventListener('click',()=>showSection('notifications')); sp.addEventListener('click',()=>showSection('support'));
-    document.getElementById('createSupportTicket')?.addEventListener('click',createTicket);
-    document.getElementById('refreshSupportTickets')?.addEventListener('click',loadTickets);
-  };
-  const showSection = id => { document.querySelectorAll('.menu li').forEach(x=>x.classList.toggle('active',x.dataset.section===id)); document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active-page',x.id===id)); if(id==='notifications')loadNotifications(); if(id==='support')loadTickets(); };
-  const loadNotifications = async()=>{ const list=document.getElementById('customerNotificationsList'); if(!list)return; try { const snap=await getDocs(query(adminService.collection(db,'notifications'),orderBy('createdAt','desc'),limit(50))); list.innerHTML=snap.empty?'<div class="card"><p>No notifications.</p></div>':snap.docs.map(d=>{const x=d.data();return `<div class="card" style="margin:12px 0"><strong>${safeText(x.title||'Notification')}</strong><p>${safeText(x.message||'')}</p><small>${safeText(x.type||'info')} · ${safeText(x.createdAt?.toDate?.()?.toLocaleString?.()||'')}</small></div>`}).join(''); } catch(e){list.innerHTML=`<div class="card"><p>${safeText(e.message)}</p></div>`;} };
-  const loadTickets = async()=>{ const list=document.getElementById('supportTicketsList'); if(!list)return; try { const snap=await getDocs(query(adminService.collection(db,'supportTickets'),orderBy('createdAt','desc'),limit(30))); list.innerHTML=snap.empty?'<div class="card"><p>No support tickets yet.</p></div>':snap.docs.map(d=>{const x=d.data();return `<div class="card" style="margin:12px 0"><strong>${safeText(x.subject||'Untitled')}</strong><span class="badge badge-secondary">${safeText(x.status||'open')}</span><p>${safeText(x.message||'')}</p><small>Priority: ${safeText(x.priority||'normal')} · ${safeText(x.createdAt?.toDate?.()?.toLocaleString?.()||'')}</small></div>`}).join(''); } catch(e){list.innerHTML=`<div class="card"><p>${safeText(e.message)}</p></div>`;} };
-  const createTicket = async()=>{ const companyId=customerId(), subject=document.getElementById('supportSubject')?.value.trim(), message=document.getElementById('supportMessage')?.value.trim(), priority=document.getElementById('supportPriority')?.value||'normal'; if(!companyId||!subject||!message)return alert('Enter a subject and message.'); try { const ref=adminService.doc(adminService.collection(db,'supportTickets')); await setDoc(ref,{ticketId:ref.id,companyId,companyName:window.currentUser?.companyName||'',subject,message,priority,status:'open',createdBy:auth.currentUser?.uid||'',createdByEmail:auth.currentUser?.email||'',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}); const nref=adminService.doc(adminService.collection(db,'notifications')); await setDoc(nref,{notificationId:nref.id,title:'Support ticket created',message:`Support ticket: ${subject}`,type:'support',read:false,createdAt:serverTimestamp()}); alert('Support ticket created.'); document.getElementById('supportSubject').value=''; document.getElementById('supportMessage').value=''; await loadTickets(); } catch(e){alert(e.message||'Unable to create support ticket.');} };
-  window.NEWLOOK_CUSTOMER_TOOLS={loadNotifications,loadTickets,showSection};
-  ensureCustomerTools();
-})();
+/* Company SaaS navigation, notifications, support, users, operations, payroll, documents and settings are owned by SaaS/customerSaaSControl.js. */
 
-/* =========================================================
-   NEWLOOK V10 ENTERPRISE COMPANY CONTROL EXTENSION
-   Adds higher-level administration sections without changing
-   existing Guard / Attendance / Payroll source contracts.
-========================================================= */
-(() => {
-  const safe = v => String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const role = () => normalizeRole(window.currentUser?.role);
-  const cid = () => getCompanyId();
-  const allowed = p => {
-    const r=role();
-    if(p==='users'||p==='settings') return r==='company_admin';
-    if(p==='payroll') return ['company_admin','operations_manager'].includes(r);
-    return ['company_admin','operations_manager','supervisor'].includes(r);
-  };
-  const add = (id,label,icon='layer-group') => {
-    if(!allowed(id) || document.querySelector(`[data-section="${id}"]`)) return null;
-    const li=document.createElement('li'); li.dataset.section=id; li.innerHTML=`<i class="fas fa-${icon}"></i> ${label}`;
-    document.querySelector('.menu')?.appendChild(li);
-    li.onclick=()=>window.NEWLOOK_CUSTOMER_TOOLS?.showSection(id);
-    return li;
-  };
-  const addPage=(id,html)=>{ if(document.getElementById(id))return; const s=document.createElement('section');s.id=id;s.className='page';s.innerHTML=html;document.querySelector('.main')?.appendChild(s); };
-  const loadCollection = async (name, max=100) => {
-    // users/{uid} is the platform identity source of truth; it is NOT a tenant subcollection.
-    if (name === 'users') {
-      const snap = await getDocs(query(collection(db,'users'), where('companyId','==',cid()), limit(max)));
-      return snap.docs.map(d=>({id:d.id,...d.data()}));
-    }
-    const snap=await getDocs(query(adminService.collection(db,name),limit(max)));
-    return snap.docs.map(d=>({id:d.id,...d.data()}));
-  };
-  const renderUsers=async()=>{
-    const el=document.getElementById('enterpriseUsersList'); if(!el)return;
-    try{const rows=await loadCollection('users',200);el.innerHTML=rows.length?`<div class="table"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${safe(x.fullName||x.displayName||'—')}</td><td>${safe(x.email||'—')}</td><td>${safe(normalizeRole(x.role))}</td><td>${safe(x.status||'active')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="card"><p>No company users found.</p></div>'}catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
-  };
-  const renderOperations=async()=>{
-    const el=document.getElementById('enterpriseOperationsList'); if(!el)return;
-    try{
-      const [guards,sites,attendance,patrols,incidents,visitors,panics]=await Promise.all([
-        loadCollection('guards',200),loadCollection('sites',200),loadCollection('attendance',200),loadCollection('patrols',200),loadCollection('incidents',200),loadCollection('visitors',200),loadCollection('panicAlerts',200)
-      ]);
-      el.innerHTML=`<section class="grid"><div class="card metric"><div class="label">Guards</div><div class="value">${guards.length}</div></div><div class="card metric"><div class="label">Sites</div><div class="value">${sites.length}</div></div><div class="card metric"><div class="label">Attendance</div><div class="value">${attendance.length}</div></div><div class="card metric"><div class="label">Patrols</div><div class="value">${patrols.length}</div></div><div class="card metric"><div class="label">Incidents</div><div class="value">${incidents.length}</div></div><div class="card metric"><div class="label">Visitors</div><div class="value">${visitors.length}</div></div><div class="card metric"><div class="label">Panic events</div><div class="value">${panics.length}</div></div></section><section class="card"><h2>Operational control</h2><p class="muted">Live operational collections are monitored here. Payroll source collections are intentionally excluded.</p></section>`;
-    }catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
-  };
-  const renderDocuments=async()=>{
-    const el=document.getElementById('enterpriseDocumentsList');if(!el)return;
-    try{const rows=await loadCollection('documents',200);el.innerHTML=rows.length?`<div class="table"><table><thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Updated</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${safe(x.name||x.title||x.fileName||x.id)}</strong></td><td>${safe(x.type||'document')}</td><td>${safe(x.status||'active')}</td><td>${safe(x.updatedAt?.toDate?.()?.toLocaleString?.()||x.createdAt?.toDate?.()?.toLocaleString?.()||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="card"><p>No company documents found.</p></div>'}catch(e){el.innerHTML=`<div class="card"><p>${safe(e.message)}</p></div>`}
-  };
-  const build=()=>{
-    const menu=document.querySelector('.menu');if(!menu)return;
-    const defs=[['users','Users & Access','users'],['operations','Operations Control','gauge-high'],['payroll','Payroll','money-check-dollar'],['documents','Documents','folder-open'],['settings','Company Settings','sliders']];
-    defs.forEach(d=>add(...d));
-    addPage('users',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Users & Access</h1><p>Company identity, roles and account status.</p></div></div></header><h2><i class="fas fa-users"></i> USERS & ACCESS</h2><div id="enterpriseUsersList"></div>`);
-    addPage('operations',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Operations Control</h1><p>Enterprise operational overview.</p></div></div></header><h2><i class="fas fa-gauge-high"></i> OPERATIONS CONTROL</h2><div id="enterpriseOperationsList"></div>`);
-    addPage('payroll',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Payroll</h1><p>Open the dedicated payroll processing environment.</p></div></div></header><h2><i class="fas fa-money-check-dollar"></i> PAYROLL</h2><div class="card"><p>Payroll processing uses the dedicated Payroll module and preserves <strong>shiftRecords</strong> and <strong>attendanceRecords</strong> as payroll source collections.</p><a class="action-btn action-btn-primary" href="payroll.html" style="display:inline-block;text-decoration:none">Open Payroll</a></div>`);
-    addPage('documents',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Documents</h1><p>Company and operational document registry.</p></div></div></header><h2><i class="fas fa-folder-open"></i> DOCUMENTS</h2><div id="enterpriseDocumentsList"></div>`);
-    addPage('settings',`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>Company Settings</h1><p>Administrative configuration domains.</p></div></div></header><h2><i class="fas fa-sliders"></i> COMPANY SETTINGS</h2><section class="grid three"><div class="card"><h3>Company Profile</h3><p class="muted">Identity, contact and branding.</p></div><div class="card"><h3>Roles & Permissions</h3><p class="muted">Company user access controls.</p></div><div class="card"><h3>Attendance</h3><p class="muted">Operational attendance configuration.</p></div><div class="card"><h3>Payroll</h3><p class="muted">Rates, overtime and payroll policies.</p></div><div class="card"><h3>Notifications</h3><p class="muted">Alerts and company communications.</p></div><div class="card"><h3>Security</h3><p class="muted">Devices, access and audit controls.</p></div></section>`);
-    document.querySelectorAll('.menu li[data-section="users"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('users');renderUsers()});
-    document.querySelectorAll('.menu li[data-section="operations"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('operations');renderOperations()});
-    document.querySelectorAll('.menu li[data-section="documents"]').forEach(x=>x.onclick=()=>{window.NEWLOOK_CUSTOMER_TOOLS?.showSection('documents');renderDocuments()});
-  };
-  build();
-  window.NEWLOOK_ENTERPRISE_CONTROL={renderUsers,renderOperations,renderDocuments};
-})();
+// NEWLOOK V13.1 command/realtime bridge exports
+window.loadGuards = loadGuards;
+window.loadSites = loadSites;
+window.loadCheckpoints = loadCheckpoints;
+window.loadShifts = loadShifts;

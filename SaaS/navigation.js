@@ -1,9 +1,12 @@
 import { hasPermission, normalizeRole } from './permissions.js';
 
 const SECTION_PERMISSION = {
-  dashboard: 'dashboard', guards: 'guards', sites: 'sites', shifts: 'shifts',
-  attendance: 'attendance', reports: 'reports', patrols: 'patrols', visitors: 'visitors',
-  incidents: 'incidents', panic: 'panic', analytics: 'reports', broadcast: 'broadcasts', notifications: 'notifications', support: 'support', devices: 'devices', payroll: 'payroll', users: 'users', settings: 'settings', support: 'support', notifications: 'notifications', documents: 'documents', operations: 'reports'
+  dashboard:'dashboard', guards:'guards', sites:'sites', shifts:'shifts',
+  attendance:'attendance', reports:'reports', patrols:'patrols', visitors:'visitors',
+  incidents:'incidents', panic:'panic', analytics:'analytics', devices:'devices',
+  broadcast:'broadcasts', notifications:'notifications', support:'support',
+  users:'users', operations:'operations', payroll:'payroll', documents:'documents',
+  settings:'settings'
 };
 
 export function applyRoleNavigation(role) {

@@ -1,2 +1,52 @@
-/* NEWLOOK SaaS Unified Action System V2 */
-.action-btn{appearance:none;border:1px solid transparent;border-radius:10px;min-height:40px;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 13px/1.1 inherit;cursor:pointer;transition:.16s ease;white-space:nowrap}.action-btn:disabled{opacity:.55;cursor:not-allowed}.action-btn-primary{background:linear-gradient(135deg,#f1d77a,#d4af37);color:#111}.action-btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(212,175,55,.18)}.action-btn-secondary{background:rgba(255,255,255,.04);border-color:rgba(212,175,55,.22);color:#f6f6f6}.action-btn-secondary:hover:not(:disabled){border-color:rgba(212,175,55,.5);background:rgba(212,175,55,.08)}.action-btn-success{background:rgba(75,194,125,.12);border-color:rgba(75,194,125,.35);color:#a8edc5}.action-btn-warning{background:rgba(232,175,64,.12);border-color:rgba(232,175,64,.4);color:#f3d887}.action-btn-danger{background:rgba(232,91,91,.12);border-color:rgba(232,91,91,.38);color:#ffb2b2}.action-spinner{width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:nl-spin .7s linear infinite}@keyframes nl-spin{to{transform:rotate(360deg)}}.newlook-action-toast{position:fixed;right:20px;bottom:20px;z-index:99999;max-width:380px;padding:13px 16px;border:1px solid rgba(212,175,55,.25);border-radius:12px;background:#171717;color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.35);opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}.newlook-action-toast.show{opacity:1;transform:none}.nl-action-confirm{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(5px)}.nl-action-dialog{width:min(440px,100%);padding:25px;border:1px solid rgba(212,175,55,.25);border-radius:18px;background:#141414;color:#f7f7f7;box-shadow:0 30px 90px rgba(0,0,0,.55)}.nl-action-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:rgba(232,91,91,.15);border:1px solid rgba(232,91,91,.35);color:#ffb2b2;font-weight:800;font-size:20px}.nl-action-dialog h3{margin:17px 0 8px;font-size:20px}.nl-action-dialog p{margin:0;color:#aaa;line-height:1.55}.nl-action-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}@media(max-width:600px){.action-btn{min-height:44px}.nl-action-dialog-actions{flex-direction:column-reverse}.nl-action-dialog-actions .action-btn{width:100%}}
+/* NEWLOOK SaaS Unified Enterprise Action System V3 */
+.action-btn{appearance:none;border:1px solid transparent;border-radius:9px;min-height:38px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:600 13px/1.1 inherit;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease,opacity .16s ease;white-space:nowrap;text-decoration:none;box-sizing:border-box}
+.action-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 16px rgba(0,0,0,.12)}
+.action-btn:active:not(:disabled){transform:translateY(0);box-shadow:none}
+.action-btn:focus-visible{outline:3px solid rgba(59,130,246,.28);outline-offset:2px}
+.action-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.action-btn-primary{background:#2563eb;color:#fff;border-color:#1d4ed8}
+.action-btn-primary:hover:not(:disabled){background:#1d4ed8}
+.action-btn-success{background:#16a34a;color:#fff;border-color:#15803d}
+.action-btn-success:hover:not(:disabled){background:#15803d}
+.action-btn-danger{background:#dc2626;color:#fff;border-color:#b91c1c}
+.action-btn-danger:hover:not(:disabled){background:#b91c1c}
+.action-btn-warning{background:#f59e0b;color:#171717;border-color:#d97706}
+.action-btn-warning:hover:not(:disabled){background:#d97706;color:#fff}
+.action-btn-orange{background:#ea580c;color:#fff;border-color:#c2410c}
+.action-btn-orange:hover:not(:disabled){background:#c2410c}
+.action-btn-purple{background:#7c3aed;color:#fff;border-color:#6d28d9}
+.action-btn-purple:hover:not(:disabled){background:#6d28d9}
+.action-btn-teal{background:#0f766e;color:#fff;border-color:#115e59}
+.action-btn-teal:hover:not(:disabled){background:#115e59}
+.action-btn-secondary{background:#475569;color:#fff;border-color:#334155}
+.action-btn-secondary:hover:not(:disabled){background:#334155}
+
+/* Existing project button classes inherit the enterprise palette too. */
+button.status-btn,button.edit-btn,button.delete-btn,button.edit-site-btn,button.delete-site-btn,button.qr-btn,button.edit-checkpoint-btn,button.delete-checkpoint-btn,button.edit-shift-btn,button.delete-shift-btn{border-radius:9px;min-height:36px;padding:0 11px;font-weight:600;cursor:pointer}
+button.delete-btn,button.delete-site-btn,button.delete-checkpoint-btn,button.delete-shift-btn{background:#dc2626!important;color:#fff!important;border-color:#b91c1c!important}
+button.edit-btn,button.edit-site-btn,button.edit-checkpoint-btn,button.edit-shift-btn{background:#ea580c!important;color:#fff!important;border-color:#c2410c!important}
+button.status-btn{background:#2563eb!important;color:#fff!important;border-color:#1d4ed8!important}
+button.qr-btn{background:#7c3aed!important;color:#fff!important;border-color:#6d28d9!important}
+
+.action-spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:nl-spin .7s linear infinite}
+@keyframes nl-spin{to{transform:rotate(360deg)}}
+.action-copy-row{min-height:34px;padding:0 10px}
+
+.newlook-action-toast{position:fixed;right:20px;bottom:20px;z-index:99999;max-width:380px;padding:13px 16px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:#111827;color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.28);opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}
+.newlook-action-toast.show{opacity:1;transform:none}
+.newlook-action-toast.is-error{border-color:#ef4444}.newlook-action-toast.is-success{border-color:#22c55e}
+
+.nl-action-confirm{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.72);backdrop-filter:blur(5px)}
+.nl-action-dialog{width:min(440px,100%);padding:25px;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:#fff;color:#0f172a;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+.nl-action-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#fee2e2;border:1px solid #fecaca;color:#b91c1c;font-weight:800;font-size:20px}
+.nl-action-dialog h3{margin:17px 0 8px;font-size:20px}.nl-action-dialog p{margin:0;color:#475569;line-height:1.55}.nl-action-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+
+@media(max-width:600px){.action-btn{min-height:42px}.nl-action-dialog-actions{flex-direction:column-reverse}.nl-action-dialog-actions .action-btn{width:100%}}
+
+/* V13.1 realtime command bar */
+.newlook-realtime-command-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:12px;flex-wrap:wrap}
+.newlook-realtime-status{display:inline-flex;align-items:center;gap:7px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:999px;padding:7px 11px;font:700 12px/1 inherit}
+.newlook-realtime-status.is-error{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.newlook-live-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.12);display:inline-block}
+.newlook-realtime-status.is-error .newlook-live-dot{background:#dc2626;box-shadow:0 0 0 4px rgba(220,38,38,.12)}
+@media(max-width:640px){.newlook-realtime-command-bar{justify-content:stretch}.newlook-realtime-command-bar>*{flex:1}}

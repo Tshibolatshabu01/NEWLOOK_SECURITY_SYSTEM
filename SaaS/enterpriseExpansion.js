@@ -1,39 +1,26 @@
-import { db, auth, getCompanyId } from '../Js/firebase.js';
-import { getDocs, query, limit, collection, where, orderBy } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
-import { normalizeRole, hasPermission } from './permissions.js';
+/*
+ * NEWLOOK Company SaaS compatibility layer.
+ * The authoritative customer navigation/pages are built by
+ * customerSaaSControl.js so every Company SaaS section shares one
+ * tenant session, permission map and navigation lifecycle.
+ * This file is intentionally kept as a stable entry point for older builds.
+ */
+import { auth } from '../Js/firebase.js';
+import { loadSession } from './companySession.js';
+import { normalizeRole } from './permissions.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 
-const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-const cid=()=>getCompanyId();
-const role=()=>normalizeRole(window.currentUser?.role);
-const companyCollection=(name)=>collection(db,'companies',cid(),name);
-const fmt=v=>v?.toDate?.()?.toLocaleString?.()||'—';
-const read=async(name,n=100)=>{try{const s=await getDocs(query(companyCollection(name),limit(n)));return s.docs.map(d=>({id:d.id,...d.data()}));}catch{return[]}};
-const count=async name=>(await read(name,500)).length;
-
-function addMenu(id,label,icon){if(document.querySelector(`.menu li[data-section="${id}"]`))return;const li=document.createElement('li');li.dataset.section=id;li.innerHTML=`<i class="fas fa-${icon}"></i> ${label}`;document.querySelector('.menu')?.appendChild(li);li.onclick=()=>show(id);}
-function addPage(id,title,subtitle,body){if(document.getElementById(id))return;const s=document.createElement('section');s.id=id;s.className='page';s.innerHTML=`<header class="staff-report-header"><div class="staff-report-company"><img class="staff-report-logo" src="assets/images/logo.png" alt="Company Logo"><div><h1>${title}</h1><p>${subtitle}</p></div></div></header><h2>${title.toUpperCase()}</h2><div id="${id}Body">${body}</div>`;document.querySelector('.main')?.appendChild(s);}
-function show(id){document.querySelectorAll('.menu li').forEach(x=>x.classList.toggle('active',x.dataset.section===id));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active-page',x.id===id));load(id);}
-const metric=(label,value,hint='')=>`<div class="card metric"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`;
-const table=(headers,rows,empty='No data available.')=>`<div class="table"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${headers.length}" class="empty">${empty}</td></tr>`}</tbody></table></div>`;
-
-async function load(id){
- const b=document.getElementById(id+'Body'); if(!b)return;
- try{
-  if(id==='command-center'){const [g,s,a,p,i,v,x]=await Promise.all(['guards','sites','attendance','patrols','incidents','visitors','panicAlerts'].map(read));b.innerHTML=`<section class="grid">${metric('Guards',g.length,'Workforce')}${metric('Sites',s.length,'Active locations')}${metric('Attendance',a.length,'Live records')}${metric('Patrols',p.length,'Operational activity')}${metric('Incidents',i.length,'Reported events')}${metric('Visitors',v.length,'Visitor records')}${metric('Panic alerts',x.length,'Emergency events')}</section><section class="card"><h3>Executive operational view</h3><p class="muted">This command center monitors operational collections only. Payroll source collections remain isolated.</p></section>`;}
-  else if(id==='site-control'){const rows=await read('sites');b.innerHTML=table(['Site','Status','Location','Updated'],rows.map(x=>`<tr><td><strong>${esc(x.name||x.siteName||x.id)}</strong></td><td>${esc(x.status||'active')}</td><td>${esc(x.address||x.location||'—')}</td><td>${fmt(x.updatedAt||x.createdAt)}</td></tr>`).join(''));}
-  else if(id==='workforce'){const rows=await read('guards',500);b.innerHTML=`<section class="grid">${metric('Total guards',rows.length)}${metric('Active',rows.filter(x=>String(x.status||'active').toLowerCase()==='active').length)}${metric('Inactive',rows.filter(x=>String(x.status||'').toLowerCase()!=='active').length)}</section>${table(['Guard','Employee ID','Status','Site'],rows.map(x=>`<tr><td>${esc(x.name||x.fullName||x.guardName||x.id)}</td><td>${esc(x.employeeId||x.guardId||'—')}</td><td>${esc(x.status||'active')}</td><td>${esc(x.siteName||x.siteId||'—')}</td></tr>`).join(''))}`;}
-  else if(id==='scheduling'){const rows=await read('shifts',300);b.innerHTML=table(['Shift','Site','Start','End','Status'],rows.map(x=>`<tr><td>${esc(x.name||x.shiftName||x.id)}</td><td>${esc(x.siteName||x.siteId||'—')}</td><td>${esc(x.startTime||x.scheduledStart||'—')}</td><td>${esc(x.endTime||x.scheduledEnd||'—')}</td><td>${esc(x.status||'scheduled')}</td></tr>`).join(''));}
-  else if(id==='compliance'){const [inc,pat,att]=await Promise.all(['incidents','patrols','attendance'].map(read));b.innerHTML=`<section class="grid">${metric('Attendance records',att.length)}${metric('Patrol records',pat.length)}${metric('Incident records',inc.length)}</section><section class="card"><h3>Compliance posture</h3><p class="muted">Review attendance, patrol and incident evidence before customer or management audits.</p></section>`;}
-  else if(id==='quality'){const [pat,inc,v]=await Promise.all(['patrols','incidents','visitors'].map(read));b.innerHTML=`<section class="grid">${metric('Patrol evidence',pat.length)}${metric('Incident evidence',inc.length)}${metric('Visitor evidence',v.length)}</section><div class="card"><h3>Quality assurance</h3><p class="muted">Use operational evidence to review site performance, incident handling and patrol completion.</p></div>`;}
-  else if(id==='client-management'){const rows=await read('clients',200);b.innerHTML=table(['Client','Contact','Status','Updated'],rows.map(x=>`<tr><td>${esc(x.name||x.clientName||x.id)}</td><td>${esc(x.email||x.contactEmail||x.phone||'—')}</td><td>${esc(x.status||'active')}</td><td>${fmt(x.updatedAt||x.createdAt)}</td></tr>`).join(''));}
-  else if(id==='contracts'){const rows=await read('contracts',200);b.innerHTML=table(['Contract','Client','Status','Start','End'],rows.map(x=>`<tr><td>${esc(x.name||x.contractNumber||x.id)}</td><td>${esc(x.clientName||x.clientId||'—')}</td><td>${esc(x.status||'active')}</td><td>${esc(x.startDate||'—')}</td><td>${esc(x.endDate||'—')}</td></tr>`).join(''));}
-  else if(id==='assets'){const rows=await read('assets',300);b.innerHTML=table(['Asset','Category','Status','Assigned'],rows.map(x=>`<tr><td>${esc(x.name||x.assetName||x.id)}</td><td>${esc(x.category||x.type||'—')}</td><td>${esc(x.status||'active')}</td><td>${esc(x.assignedTo||x.siteId||'—')}</td></tr>`).join(''));}
-  else if(id==='inventory'){const rows=await read('inventory',300);b.innerHTML=table(['Item','SKU','Quantity','Status'],rows.map(x=>`<tr><td>${esc(x.name||x.itemName||x.id)}</td><td>${esc(x.sku||'—')}</td><td>${esc(x.quantity??x.stock??0)}</td><td>${esc(x.status||'active')}</td></tr>`).join(''));}
-  else if(id==='communications'){const rows=await read('notifications',100);b.innerHTML=table(['Title','Type','Read','Created'],rows.map(x=>`<tr><td>${esc(x.title||'Notification')}</td><td>${esc(x.type||'info')}</td><td>${x.read?'Yes':'No'}</td><td>${fmt(x.createdAt)}</td></tr>`).join(''));}
-  else if(id==='business-intelligence'){const [g,s,a,p,inc]=await Promise.all(['guards','sites','attendance','patrols','incidents'].map(read));b.innerHTML=`<section class="grid">${metric('Workforce',g.length)}${metric('Sites',s.length)}${metric('Attendance',a.length)}${metric('Patrols',p.length)}${metric('Incidents',inc.length)}</section><div class="card"><h3>Business intelligence</h3><p class="muted">Operational KPIs are derived from the current tenant dataset and are read-only in this release.</p></div>`;}
- }catch(e){b.innerHTML=`<div class="card"><p>${esc(e.message||'Unable to load section.')}</p></div>`}
-}
-
-function buildCompany(){const r=role();if(!['company_admin','operations_manager','supervisor'].includes(r))return;const defs=[['command-center','Command Center','gauge-high'],['site-control','Site Control','building-shield'],['workforce','Workforce Management','people-group'],['scheduling','Scheduling','calendar-days'],['compliance','Compliance','shield-halved'],['quality','Quality Assurance','circle-check'],['client-management','Client Management','handshake'],['contracts','Contracts','file-contract'],['assets','Asset Management','boxes-stacked'],['inventory','Inventory','warehouse'],['communications','Communications','comments'],['business-intelligence','Business Intelligence','chart-line']];defs.forEach(([id,l,i])=>{addMenu(id,l,i);addPage(id,l,'Enterprise customer management and operational intelligence.',`<div class="card"><p class="muted">Loading ${l}…</p></div>`)});}
-
-document.addEventListener('DOMContentLoaded',buildCompany);
+onAuthStateChanged(auth, async user => {
+  if (!user) return;
+  try {
+    const session = await loadSession(user);
+    window.NEWLOOK_COMPANY_SAAS = {
+      companyId: session.companyId,
+      role: normalizeRole(session.role),
+      version: 'unified-company-saas-v2',
+      navigationOwner: 'SaaS/customerSaaSControl.js'
+    };
+  } catch (error) {
+    console.error('NEWLOOK Company SaaS compatibility layer', error);
+  }
+});

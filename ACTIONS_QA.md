@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V8 — Unified Actions QA
+# YOURI SaaS V8 — Unified Actions QA
 
 - Unified action manager added: `SaaS/actionManager.js`
 - Unified action styles added: `SaaS/actionSystem.css`

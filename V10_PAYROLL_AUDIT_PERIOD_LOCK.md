@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Audit & Period Lock Engine
+# YOURI SaaS V10 — Payroll Audit & Period Lock Engine
 
 ## Purpose
 The Payroll Audit & Period Lock Engine protects finalized payroll from unauthorized changes while providing an auditable correction path.

@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Financial Controls & General Ledger
+# YOURI SaaS V10 — Payroll Financial Controls & General Ledger
 
 ## Scope
 Adds a tenant-scoped payroll finance control layer without pretending to post directly into an external accounting package.
@@ -30,7 +30,7 @@ Typical generated entries include:
 The generated journal must balance before close.
 
 ## Boundary
-NEWLOOK does not directly post to Sage, Xero, QuickBooks, SAP, or another external GL in this release. The CSV export is the controlled integration boundary.
+YOURI does not directly post to Sage, Xero, QuickBooks, SAP, or another external GL in this release. The CSV export is the controlled integration boundary.
 
 ## Payroll source separation
 `shiftRecords` and `attendanceRecords` remain reserved payroll source streams and are not converted into general ledger data.

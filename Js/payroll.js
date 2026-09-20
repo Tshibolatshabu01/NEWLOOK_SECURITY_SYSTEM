@@ -146,7 +146,7 @@ onAuthStateChanged(auth, async(user)=>{
 
         const admin=snap.data();
 
-        if(!["super_admin","superAdmin","company_admin","companyAdmin","operations_manager","supervisor"].includes(admin.role)){
+        if(!["super_admin","company_admin","operations_manager","supervisor"].includes(admin.role)){
 
             alert("Access denied.");
 
@@ -714,7 +714,7 @@ function setupNotificationButton(){
 
 
 // =======================================================
-// LOGIN REDIRECT PLACEHOLDER
+// LOGIN REDIRECT HELPER
 // =======================================================
 
 

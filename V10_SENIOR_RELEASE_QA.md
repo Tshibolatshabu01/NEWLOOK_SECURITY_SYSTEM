@@ -1,7 +1,7 @@
-# NEWLOOK SaaS V10 — Senior Release QA
+# YOURI SaaS V10 — Senior Release QA
 
 ## Source of truth
-`NEWLOOK_SaaS_2.0_V10_FULL_OPERATIONAL_CSS_REDESIGN.zip`
+`YOURI_SaaS_2.0_V10_FULL_OPERATIONAL_CSS_REDESIGN.zip`
 
 ## Completion status
 **Customer-ready release candidate — static engineering gate passed.**

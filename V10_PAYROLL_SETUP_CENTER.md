@@ -1,4 +1,4 @@
-# NEWLOOK V10 Payroll Setup Center
+# YOURI V10 Payroll Setup Center
 
 ## Production workflow
 1. Company Admin creates a salary profile under Payroll > Pay Rates.

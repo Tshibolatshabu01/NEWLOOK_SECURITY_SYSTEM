@@ -1,4 +1,4 @@
-# NEWLOOK V10 Payroll Calculation & Statutory Engine
+# YOURI V10 Payroll Calculation & Statutory Engine
 
 Release: 2026-09-04
 

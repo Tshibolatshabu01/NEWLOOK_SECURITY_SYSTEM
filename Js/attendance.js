@@ -5,7 +5,7 @@ import { bootDeviceApp } from "../SaaS/appKernel.js";
 //====================================================
 // DEVICE SECURITY
 //====================================================
-import { ensureDeviceAuthorized } from "./deviceAuth.js";
+import { ensureDeviceAuthorized, getDeviceContext } from "./deviceAuth.js";
 
 //====================================================
 // FIREBASE
@@ -29,7 +29,7 @@ const DEVICE_READY = await ensureDeviceAuthorized("attendance.html", "attendance
 if (!DEVICE_READY) {
     throw new Error("NEWLOOK: Device setup required.");
 }
-bootDeviceApp("attendance", "attendance", window.newlookDeviceContext || null);
+bootDeviceApp("attendance", "attendance", getDeviceContext());
 
 //====================================================
 // DEBUG
@@ -1754,7 +1754,6 @@ async function createAttendanceRecord(employee, records){
 
     }
     catch(error){
-            companyId: getCompanyId(),
 
         console.error("createAttendanceRecord ERROR:");
         console.error(error);
@@ -2392,3 +2391,6 @@ async function loadGuardsCache(){
     guardsLoaded = true;
 
 }
+
+// NEWLOOK V13.1 realtime command bridge
+window.loadGuardsCache = loadGuardsCache;

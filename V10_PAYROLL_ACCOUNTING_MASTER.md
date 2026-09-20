@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Payroll Accounting Master & Cost-Centre Controls
+# YOURI SaaS V10 — Payroll Accounting Master & Cost-Centre Controls
 
 ## Purpose
 Provides each tenant with a controlled payroll accounting master without introducing direct external ERP posting.

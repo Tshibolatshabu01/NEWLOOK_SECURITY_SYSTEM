@@ -1,7 +1,7 @@
-# NEWLOOK SaaS V10 — Senior Release Checklist
+# YOURI SaaS V10 — Senior Release Checklist
 
 ## Source of truth
-- Current baseline: `NEWLOOK_SaaS_2.0_V10_PAYROLL_CONNECTED_FINAL2.zip`
+- Current baseline: `YOURI_SaaS_2.0_V10_PAYROLL_CONNECTED_FINAL2.zip`
 - Do not substitute V10.1.
 
 ## Protected applications

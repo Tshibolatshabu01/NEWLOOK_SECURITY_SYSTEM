@@ -3,7 +3,7 @@ window.NEWLOOK_SUPERADMIN_SERVICE = superAdminService;
 import { auth, db, firebaseConfig } from "../Js/firebase.js";
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signOut as secondarySignOut, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, orderBy, limit, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, orderBy, limit, serverTimestamp, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { loadSession, clearSession } from "../SaaS/companySession.js";
 import { normalizeRole } from "../SaaS/permissions.js";
 const appRoot=document.getElementById("app"), toast=document.getElementById("toast");let companies=[],users=[],plans=[],activity=[],tickets=[],platformNotifications=[];let activeView="overview",timer;
@@ -18,6 +18,26 @@ async function loadAll(){
  activity=all.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0)).slice(0,100);
 }
 async function loadTickets(){tickets=[];for(const c of companies.slice(0,100)){try{const s=await getDocs(query(superAdminService.companyCollection(c.id,"supportTickets"),orderBy("createdAt","desc"),limit(50)));s.forEach(d=>tickets.push({id:d.id,companyId:c.id,companyName:companyName(c.id),...d.data()}));}catch{}}tickets.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));}
+let realtimeUnsubscribers=[];
+let realtimeRefreshTimer=null;
+let realtimeRefreshQueued=false;
+function stopSuperAdminRealtime(){realtimeUnsubscribers.forEach(fn=>{try{fn()}catch{}});realtimeUnsubscribers=[];if(realtimeRefreshTimer)clearInterval(realtimeRefreshTimer);realtimeRefreshTimer=null;}
+function queueSuperAdminRefresh(){
+ if(realtimeRefreshQueued)return;
+ realtimeRefreshQueued=true;
+ setTimeout(async()=>{realtimeRefreshQueued=false;try{await loadAll();if(activeView==='support')await loadTickets();if(activeView==='notifications')await loadNotifications();await render();}catch(e){console.error('Super Admin realtime refresh failed',e)}},350);
+}
+function startSuperAdminRealtime(){
+ stopSuperAdminRealtime();
+ const watch=(ref,label)=>realtimeUnsubscribers.push(onSnapshot(ref,()=>{window.NEWLOOK_SUPERADMIN_REALTIME=label;queueSuperAdminRefresh()},e=>console.error(`Super Admin realtime ${label} failed`,e)));
+ watch(superAdminService.collection('companies'),'companies');
+ watch(superAdminService.collection('users'),'users');
+ watch(superAdminService.collection('subscriptionPlans'),'plans');
+ watch(superAdminService.collection('superAdminNotifications'),'platform-notifications');
+ realtimeRefreshTimer=setInterval(async()=>{try{await loadAll();await loadTickets();await loadNotifications();await render();window.NEWLOOK_SUPERADMIN_LAST_REFRESH=new Date().toISOString();}catch(e){console.error('Super Admin auto-refresh failed',e)}},30000);
+ window.NEWLOOK_SUPERADMIN_AUTO_REFRESH=true;
+}
+
 async function loadNotifications(){try{const s=await getDocs(query(superAdminService.collection("superAdminNotifications"),orderBy("createdAt","desc"),limit(80)));platformNotifications=s.docs.map(d=>({id:d.id,...d.data()}));}catch{platformNotifications=[]}}
 async function audit(companyId,action,description,metadata={}){await setDoc(doc(superAdminService.companyCollection(companyId,"auditLogs")),{action,description,metadata,performedBy:auth.currentUser?.uid||null,performedByEmail:auth.currentUser?.email||null,role:"super_admin",createdAt:serverTimestamp()})}
 function header(t,s){document.getElementById("title").textContent=t;document.getElementById("subtitle").textContent=s}
@@ -52,4 +72,4 @@ function renderSettings(){header("Platform Settings","Controlled configuration f
 
 async function render(){const f={overview:renderOverview,companies:renderCompanies,users:renderUsers,subscriptions:renderSubscriptions,plans:renderPlans,billing:renderBilling,analytics:renderAnalytics,reports:renderReports,devices:renderDevices,security:renderSecurity,features:renderFeatures,support:renderSupport,notifications:renderNotifications,audit:renderAudit,health:renderHealth,settings:renderSettings}[activeView]||renderOverview;await f()}
 async function refresh(){await loadAll();if(activeView==='support')await loadTickets();if(activeView==='notifications')await loadNotifications();render()}
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeView=b.dataset.v;render()});document.getElementById("logout").onclick=async()=>{await signOut(auth);clearSession();location.href="../SaasLogin.html"};onAuthStateChanged(auth,async user=>{if(!user){location.href="../SaasLogin.html";return}try{const s=await loadSession(user);if(s.role!=="super_admin")throw new Error("Super Admin access required.");document.getElementById("identity").textContent=s.email;await loadAll();await loadTickets();await loadNotifications();render()}catch(e){console.error(e);await signOut(auth);clearSession();location.href="../SaasLogin.html"}});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeView=b.dataset.v;render()});document.getElementById("logout").onclick=async()=>{await signOut(auth);clearSession();location.href="../SaasLogin.html"};onAuthStateChanged(auth,async user=>{if(!user){location.href="../SaasLogin.html";return}try{const s=await loadSession(user);if(s.role!=="super_admin")throw new Error("Super Admin access required.");document.getElementById("identity").textContent=s.email;await loadAll();await loadTickets();await loadNotifications();render();startSuperAdminRealtime()}catch(e){console.error(e);await signOut(auth);clearSession();location.href="../SaasLogin.html"}});

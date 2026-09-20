@@ -1,6 +1,6 @@
-# NEWLOOK Security SaaS 2.0 — Customer Build
+# YOURI Security Software — Enterprise SaaS Customer Build
 
-This build uses the original NEWLOOK operational applications as the foundation and adds a clean multi-tenant SaaS control layer.
+This build uses the original YOURI operational applications as the foundation and adds a clean multi-tenant SaaS control layer.
 
 ## Core applications
 - `admin.html` — company operations platform
@@ -59,3 +59,16 @@ Company data is stored under `companies/{companyId}/...` and access is enforced 
 - Company subscription/status fields cannot be changed by Company Admin through the company document update rule.
 - Company audit logs are append-only.
 - Guard creation checks the plan guard limit in the client; production billing/entitlement enforcement should also be mirrored in trusted server-side infrastructure when payments are enabled.
+
+
+## Public website — V14.4
+- `index.html` — public YOURI Security Software website.
+- Brand: **YOURI Security Software**.
+- Tagline: **Smart Security Management Solutions**.
+- Login CTA routes to `SaasLogin.html`.
+- Contact/demo enquiries are written to the top-level `publicLeads` collection.
+- Public lead rules permit create-only submissions with strict field/length validation; public clients cannot read, update or delete submissions.
+- App Check/rate limiting should be enabled at deployment for stronger public-form abuse protection.
+
+## V14.4 QA status
+Static source validation passed for JavaScript syntax, duplicate HTML IDs and local script references. Firestore behaviour, tenant isolation, device workflows, realtime listeners, public lead writes and payroll workflows still require live Firebase/staging acceptance. This package is therefore **not declared production-ready solely from static validation**.

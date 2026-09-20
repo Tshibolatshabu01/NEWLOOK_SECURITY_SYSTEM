@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Enterprise Sections Expansion
+# YOURI SaaS V10 — Enterprise Sections Expansion
 
 ## Super Admin
 Added: Overview, Companies, Users, Subscriptions, Plans, Billing & Payments, Analytics, Reports, Devices, Security, Features, Support, Notifications, Audit & Activity, System Health, Settings.

@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 Payroll Production Fix
+# YOURI SaaS V10 Payroll Production Fix
 
 - Company Admin is the only role allowed to process, approve, finalize, and mark payroll paid.
 - Operations Manager remains read/report access.

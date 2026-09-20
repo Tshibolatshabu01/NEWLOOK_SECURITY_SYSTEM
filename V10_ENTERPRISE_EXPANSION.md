@@ -1,4 +1,4 @@
-# NEWLOOK SaaS V10 — Enterprise Expansion
+# YOURI SaaS V10 — Enterprise Expansion
 
 Implemented enterprise administration sections on top of the production V10 build.
 
